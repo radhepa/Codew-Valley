@@ -31,6 +31,11 @@ PALETTE = {
     "hair_grey": "#ADA49B", "pip_belly": "#EEE2B8", "cap": "#3A4262",
     "petal_pink": "#D98AAA", "petal_white": "#F3EEE4", "petal_yellow": "#E9C65C",
     "petal_purple": "#9D8AC9", "tunic": "#465479", "pants": "#5F5446", "scarf": "#B88A3E",
+    # mill + Wren
+    "canvas": "#E2D6BC", "soil": "#7E644C", "soil_dark": "#6A5442", "stone_warm": "#B2A68F", "wheat": "#C9A04A",
+    "wheat_light": "#DBB862", "wheat_dark": "#A8883F", "shingle": "#86715C", "shingle_dark": "#665546",
+    "shingle_light": "#A08A70", "shutter": "#5C7487", "sack": "#D6C8AA", "flour": "#F0EBE0",
+    "straw": "#D8BC70", "straw_dark": "#B39550", "mustard": "#C39A3E", "freckle": "#C08868", "hair_copper": "#9E5B36",
 }
 ART_MD_HEX = {
     "grass": "#7FB24A", "grass_dark": "#5E9A3A", "grass_light": "#A5CC5B", "leaf_deep": "#3F7A34",

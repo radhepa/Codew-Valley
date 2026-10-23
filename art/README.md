@@ -18,11 +18,12 @@ automatically. Keep it on, because it multiplies the base colour. Previews use A
 |---|---|
 | `scripts/common.py` | Palette, `Part` mesh builder, AO bake, export, preview rig (meadow, hills, clouds, fog) |
 | `scripts/tavern.py` | `tavern.glb`, 12 cumulative stages + per-stage previews |
-| `scripts/pip.py`, `player.py`, `innkeeper.py`, `chibi.py` | characters |
+| `scripts/mill.py` | `mill.glb`, 14 cumulative stages (`sails` spins on the hub, `wheat_01..24` sway) + per-stage previews |
+| `scripts/pip.py`, `player.py`, `innkeeper.py`, `miller.py`, `chibi.py` | characters |
 | `scripts/nature.py` | trees, rocks, plants and props (`ONLY=[...]` to rebuild some) |
 | `scripts/scene_preview.py` | preview-only village scene that imports the exported `.glb`s |
 | `blend/` | source `.blend` per model |
-| `previews/` | one render per model, `tavern_stage_01..12.png`, `village_scene*.png` |
+| `previews/` | one render per model, `tavern_stage_01..12.png`, `mill_stage_01..14.png`, `village_scene*.png` |
 
 ## Rebuilding a model
 

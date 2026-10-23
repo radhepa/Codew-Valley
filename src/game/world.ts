@@ -121,7 +121,7 @@ const SITES: Record<string, Site> = {
   mill: {
     pos: MILL_POS,
     area: { x: -3, z: 0, hw: 6.5, hd: 5 },
-    solid: { x: 0, z: 0, hw: 2.2, hd: 2.2 },
+    solid: { x: 0, z: 0, hw: 2.6, hd: 2.6 },
     villager: new THREE.Vector3(MILL_POS.x + 2.6, 0, MILL_POS.z + 4),
     villagerRot: -0.5,
     litAt: 14,

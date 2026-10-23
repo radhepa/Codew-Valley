@@ -36,7 +36,7 @@ def head(c, cfg):
     R = cfg["head_r"]
     def at(dx, dy, dz):
         return (cx + dx, cy + dy, cz + dz)
-    hp.ball(R, at(0, 0, 0), "skin", scale=(1.06, 0.98, 0.95), uv=(14, 10))
+    hp.ball(R, at(0, 0, 0), "skin", scale=(1.06, 0.98, 0.95), uv=cfg.get("head_uv", (14, 10)))
     fy = -R * 0.98      # front of the face
     # ears
     for s in (-1, 1):
@@ -74,14 +74,15 @@ def arm(side, pivot, cfg):
     pv = Vector(pivot)
     d = Vector((math.sin(math.radians(cfg.get("arm_splay", 10))) * side, 0.0, -1.0)).normalized()
     L = cfg.get("arm_len", 0.24)
-    p.ball(cfg["sleeve_r"] * 1.06, tuple(pv), cfg["sleeve_mat"], uv=(10, 6))
-    p.add(bm_tube([pv, pv + d * L], [cfg["sleeve_r"], cfg["sleeve_r"] * 0.88], 8), cfg["sleeve_mat"], smooth=True)
+    segs = cfg.get("arm_segs", 8)
+    p.ball(cfg["sleeve_r"] * 1.06, tuple(pv), cfg["sleeve_mat"], uv=cfg.get("sleeve_uv", (10, 6)))
+    p.add(bm_tube([pv, pv + d * L], [cfg["sleeve_r"], cfg["sleeve_r"] * 0.88], segs), cfg["sleeve_mat"], smooth=True)
     if cfg.get("forearm_mat"):
         p.add(bm_tube([pv + d * (L - 0.01), pv + d * (L + cfg.get("forearm_len", 0.08))],
-                      [cfg["sleeve_r"] * 0.68, cfg["sleeve_r"] * 0.62], 8), cfg["forearm_mat"], smooth=True)
+                      [cfg["sleeve_r"] * 0.68, cfg["sleeve_r"] * 0.62], segs), cfg["forearm_mat"], smooth=True)
         L += cfg.get("forearm_len", 0.08)
-    p.add(bm_tube([pv + d * (L - 0.025), pv + d * (L + 0.005)], cfg["sleeve_r"] * 0.96, 8), cfg["cuff_mat"])
-    p.ball(cfg.get("hand_r", 0.062), tuple(pv + d * (L + 0.05)), "skin", scale=(0.9, 1.0, 1.0), uv=(10, 7))
+    p.add(bm_tube([pv + d * (L - 0.025), pv + d * (L + 0.005)], cfg["sleeve_r"] * 0.96, segs), cfg["cuff_mat"])
+    p.ball(cfg.get("hand_r", 0.062), tuple(pv + d * (L + 0.05)), "skin", scale=(0.9, 1.0, 1.0), uv=cfg.get("hand_uv", (10, 7)))
     return p
 
 
