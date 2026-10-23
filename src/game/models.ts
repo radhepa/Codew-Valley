@@ -29,7 +29,7 @@ async function fetchGlb(name: string): Promise<THREE.Object3D | null> {
           const std = mt as THREE.MeshStandardMaterial;
           if (std.name?.toLowerCase().startsWith("glow") && std.emissive) {
             std.emissive.copy(std.color);
-            std.emissiveIntensity = Math.max(std.emissiveIntensity, 0.9);
+            std.emissiveIntensity = Math.max(std.emissiveIntensity, 1.8);
           }
         }
       }

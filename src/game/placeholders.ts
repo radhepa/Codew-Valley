@@ -12,7 +12,7 @@ export function mat(color: string, opts: { glow?: boolean; opacity?: number } = 
     if (opts.glow) {
       m.name = "glow";
       m.emissive = new THREE.Color(color);
-      m.emissiveIntensity = 0.9;
+      m.emissiveIntensity = 1.8;
     }
     if (opts.opacity !== undefined) {
       m.transparent = true;
@@ -25,7 +25,7 @@ export function mat(color: string, opts: { glow?: boolean; opacity?: number } = 
 }
 
 const C = {
-  grass: ["#7FB24A", "#5E9A3A", "#A5CC5B", "#3F7A34"],
+  grass: ["#7C9A52", "#5F7F43", "#98AE66", "#4B6A3A"],
   wood: ["#A0673A", "#7A4A2A", "#C58B52", "#5A3620"],
   stone: ["#A9A39A", "#8A847C", "#C9C2B6", "#6E6962"],
   thatch: ["#D9A84E", "#B9823A", "#E3B861"],

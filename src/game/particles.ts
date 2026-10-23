@@ -54,7 +54,7 @@ export class Particles {
 
   smoke(pos: THREE.Vector3) {
     const v = new THREE.Vector3((Math.random() - 0.3) * 0.4, 1 + Math.random() * 0.4, (Math.random() - 0.5) * 0.3);
-    this.spawn("ball", "#E9E6E0", 0.18 + Math.random() * 0.1, pos.clone(), v, 2.8, -0.1, 0.5, 0.6);
+    this.spawn("ball", "#F2F0EC", 0.14 + Math.random() * 0.08, pos.clone(), v, 3.2, -0.1, 0.45, 0.32);
   }
 
   update(dt: number) {

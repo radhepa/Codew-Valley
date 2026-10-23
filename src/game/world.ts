@@ -1,7 +1,9 @@
 import * as THREE from "three";
-import { model, preload } from "./models.ts";
+import { model, preload, realModels } from "./models.ts";
 import { Particles } from "./particles.ts";
 import { sfx } from "./audio.ts";
+import { ATMOS, createComposer, createHills, createMeadow, createSky } from "./atmosphere.ts";
+import type { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer.js";
 
 export type Resource = "wood" | "stone";
 
@@ -91,7 +93,11 @@ function pathDist(x: number, z: number) {
 function groundHeight(x: number, z: number) {
   const r = Math.hypot(x, z);
   let y = 0;
-  if (r > PLAY_RADIUS - 2) y += Math.pow(r - (PLAY_RADIUS - 2), 1.5) * 0.18 + noise2(x * 1.7, z * 1.7) * Math.min(1, (r - PLAY_RADIUS + 2) / 6) * 1.2;
+  if (r > PLAY_RADIUS - 2) {
+    // a soft grassy rim around the valley, then gently rolling land out to the hills
+    const t = Math.min(1, (r - (PLAY_RADIUS - 2)) / 14);
+    y += t * t * (3 - 2 * t) * 4 + noise2(x * 1.7, z * 1.7) * t * 1.4;
+  }
   const dp = Math.hypot(x - POND.x, z - POND.z);
   if (dp < POND.r + 0.8) y -= (1 - Math.min(1, Math.max(0, (dp - POND.r + 0.8) / 1.6))) * 0.55;
   return y;
@@ -141,6 +147,9 @@ export class World {
   private raycaster = new THREE.Raycaster();
   private lanternLights: THREE.PointLight[] = [];
   private nearest: Node | Npc | null = null;
+  private composer: EffectComposer;
+  private tickSky: (t: number, camera: THREE.Camera) => void = () => {};
+  private tickMeadow: (t: number) => void = () => {};
 
   constructor(canvas: HTMLCanvasElement, hooks: WorldHooks) {
     this.hooks = hooks;
@@ -148,8 +157,9 @@ export class World {
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.05;
+    this.renderer.toneMapping = THREE.AgXToneMapping;
+    this.renderer.toneMappingExposure = 1.3;
+    this.composer = createComposer(this.renderer, this.scene, this.camera);
     this.particles = new Particles(this.scene);
     window.addEventListener("resize", () => this.resize());
     this.resize();
@@ -159,7 +169,8 @@ export class World {
 
   async build(stage: number) {
     await preload(["tavern", "tree_oak", "tree_pine", "tree_stump", "rock_large", "rock_small", "bush", "flowers", "grass_tuft", "fence", "log_pile", "stone_pile", "rune_stone", "signpost", "lantern_post", "player", "innkeeper", "pip"]);
-    this.sky();
+    this.tickSky = createSky(this.scene);
+    createHills(this.scene);
     this.lights();
     this.ground();
     this.water();
@@ -172,51 +183,36 @@ export class World {
     this.camera.position.copy(this.cam);
   }
 
-  private sky() {
-    const geo = new THREE.SphereGeometry(300, 24, 12);
-    const m = new THREE.ShaderMaterial({
-      side: THREE.BackSide,
-      depthWrite: false,
-      fog: false,
-      uniforms: { top: { value: new THREE.Color("#78B7E6") }, horizon: { value: new THREE.Color("#FBE3BC") } },
-      vertexShader: "varying vec3 vP; void main(){ vP = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }",
-      fragmentShader: "uniform vec3 top; uniform vec3 horizon; varying vec3 vP; void main(){ float t = clamp(vP.y * 1.6 + 0.08, 0.0, 1.0); gl_FragColor = vec4(mix(horizon, top, pow(t, 0.7)), 1.0); }",
-    });
-    this.scene.add(new THREE.Mesh(geo, m));
-    this.scene.fog = new THREE.Fog("#F3E2C2", 55, 140);
-  }
-
   private lights() {
-    this.scene.add(new THREE.HemisphereLight("#DCEEFF", "#6E8F4C", 1.15));
-    const sun = new THREE.DirectionalLight("#FFE1B0", 2.6);
-    sun.position.set(18, 30, 14);
+    this.scene.add(new THREE.HemisphereLight("#CFE0F0", "#86935F", 1.35));
+    const sun = new THREE.DirectionalLight(ATMOS.sunColor, 2.9);
     sun.castShadow = true;
     sun.shadow.mapSize.set(2048, 2048);
     const s = sun.shadow.camera;
-    s.left = -26;
-    s.right = 26;
-    s.top = 26;
-    s.bottom = -26;
+    s.left = -28;
+    s.right = 28;
+    s.top = 28;
+    s.bottom = -28;
     s.near = 1;
-    s.far = 90;
+    s.far = 120;
     sun.shadow.bias = -0.0004;
-    sun.shadow.normalBias = 0.03;
+    sun.shadow.normalBias = 0.04;
     this.scene.add(sun, sun.target);
     this.sun = sun;
   }
 
   private ground() {
-    const size = 160;
-    const seg = 160;
+    const size = 320;
+    const seg = 200;
     const geo = new THREE.PlaneGeometry(size, size, seg, seg);
     geo.rotateX(-Math.PI / 2);
     const pos = geo.getAttribute("position");
     const colors: number[] = [];
-    const g1 = new THREE.Color("#86B84E");
-    const g2 = new THREE.Color("#6FA443");
-    const g3 = new THREE.Color("#9CC95A");
-    const dirt = new THREE.Color("#C9A26B");
-    const dirtEdge = new THREE.Color("#A9A35A");
+    const g1 = new THREE.Color("#86A355");
+    const g2 = new THREE.Color("#729249");
+    const g3 = new THREE.Color("#A8B76A");
+    const dirt = new THREE.Color("#BBA47C");
+    const dirtEdge = new THREE.Color("#8F9663");
     const c = new THREE.Color();
     for (let i = 0; i < pos.count; i++) {
       const x = pos.getX(i);
@@ -240,7 +236,7 @@ export class World {
   private water() {
     const geo = new THREE.CircleGeometry(POND.r + 0.3, 28);
     geo.rotateX(-Math.PI / 2);
-    const water = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: "#5FB6DD", roughness: 0.15, metalness: 0.1, transparent: true, opacity: 0.85 }));
+    const water = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: "#4C8CA3", roughness: 0.08, metalness: 0.2, transparent: true, opacity: 0.82 }));
     water.position.set(POND.x, -0.18, POND.z);
     water.receiveShadow = true;
     this.scene.add(water);
@@ -293,10 +289,10 @@ export class World {
     this.stageShown = n;
     this.stages.forEach((s, i) => (s.visible = i < n));
     const lit = n >= 11;
-    for (const l of this.lanternLights) l.intensity = lit ? 4 : 0;
+    for (const l of this.lanternLights) l.intensity = lit ? 5 : 0;
     this.tavern?.traverse((o) => {
       const m = (o as THREE.Mesh).material as THREE.MeshStandardMaterial | undefined;
-      if (m && m.name === "glow") m.emissiveIntensity = lit ? 1.2 : 0.15;
+      if (m && m.name.toLowerCase().startsWith("glow")) m.emissiveIntensity = lit ? 2.6 : 0.15;
     });
     if (n >= 12) void this.spawnBram();
   }
@@ -434,16 +430,18 @@ export class World {
       this.scene.add(b);
       this.colliders.push({ x, z, r: 0.5 });
     }
-    for (let i = 0; i < 55; i++) {
+    // scattered props only when real models exist; the meadow covers the rest
+    const props = ["grass_tuft", "flowers"].filter((n) => realModels.has(n));
+    for (let i = 0; i < 55 && props.length; i++) {
       const x = (rnd() - 0.5) * 2 * (PLAY_RADIUS - 2);
       const z = (rnd() - 0.5) * 2 * (PLAY_RADIUS - 2);
       if (Math.hypot(x, z) > PLAY_RADIUS - 2 || !clear(x, z, -0.6)) continue;
-      const f = await model(i % 3 === 0 ? "grass_tuft" : "flowers", seed++);
+      const f = await model(props[i % props.length], seed++);
       f.position.set(x, 0, z);
       f.rotation.y = rnd() * 6;
       this.scene.add(f);
     }
-    this.grassBlades(rnd, clear);
+    this.tickMeadow = createMeadow(this.scene, { radius: PLAY_RADIUS, height: groundHeight, clear });
     // fence along the tavern plot's sides, lantern posts on the path
     for (const [x, z, ry] of [
       [-6.2, TAVERN_POS.z - 2, Math.PI / 2], [-6.2, TAVERN_POS.z + 0.1, Math.PI / 2], [6.2, TAVERN_POS.z - 2, Math.PI / 2], [-5.1, TAVERN_POS.z - 4.3, 0], [5.1, TAVERN_POS.z - 4.3, 0], [3, TAVERN_POS.z - 4.3, 0], [-3, TAVERN_POS.z - 4.3, 0],
@@ -474,33 +472,6 @@ export class World {
       this.scene.add(b);
       this.butterflies.push({ obj: b, phase: rnd() * 10, center });
     }
-  }
-
-  private grassBlades(rnd: () => number, clear: (x: number, z: number, pad?: number) => boolean) {
-    const geo = new THREE.ConeGeometry(0.05, 0.3, 3);
-    geo.translate(0, 0.15, 0);
-    const mesh = new THREE.InstancedMesh(geo, new THREE.MeshStandardMaterial({ roughness: 1, flatShading: true }), 2400);
-    const m = new THREE.Matrix4();
-    const q = new THREE.Quaternion();
-    const e = new THREE.Euler();
-    const col = new THREE.Color();
-    const shades = ["#8FC255", "#A5CC5B", "#86B84E", "#B3D872"];
-    let n = 0;
-    for (let tries = 0; n < 2400 && tries < 12000; tries++) {
-      const x = (rnd() - 0.5) * 2 * PLAY_RADIUS;
-      const z = (rnd() - 0.5) * 2 * PLAY_RADIUS;
-      if (Math.hypot(x, z) > PLAY_RADIUS + 1 || !clear(x, z, -1)) continue;
-      e.set((rnd() - 0.5) * 0.5, rnd() * 6, (rnd() - 0.5) * 0.5);
-      q.setFromEuler(e);
-      const s = 0.6 + rnd() * 0.6;
-      m.compose(new THREE.Vector3(x, groundHeight(x, z), z), q, new THREE.Vector3(s, s, s));
-      mesh.setMatrixAt(n, m);
-      mesh.setColorAt(n, col.set(shades[n % 4]));
-      n++;
-    }
-    mesh.count = n;
-    mesh.receiveShadow = true;
-    this.scene.add(mesh);
   }
 
   private addFade(obj: THREE.Object3D) {
@@ -635,6 +606,7 @@ export class World {
     const w = innerWidth;
     const h = innerHeight;
     this.renderer.setSize(w, h, false);
+    this.composer?.setSize(w, h);
     this.camera.aspect = w / h;
     this.camera.updateProjectionMatrix();
   }
@@ -657,7 +629,9 @@ export class World {
     this.updateCamera(dt);
     this.updatePrompt();
     this.particles.update(dt);
-    this.renderer.render(this.scene, this.camera);
+    this.tickSky(this.time, this.camera);
+    this.tickMeadow(this.time);
+    this.composer.render(dt);
   }
 
   private movePlayer(dt: number) {
@@ -811,7 +785,7 @@ export class World {
       }
     }
     // keep the shadow camera centred on the player
-    this.sun.position.copy(this.player.position).add(new THREE.Vector3(18, 30, 14));
+    this.sun.position.copy(this.player.position).addScaledVector(ATMOS.sunDir, 50);
     this.sun.target.position.copy(this.player.position);
   }
 
