@@ -136,7 +136,7 @@ export function workbench(o: BenchOptions): HTMLElement {
       b.addEventListener("click", () => {
         if (i === q.answer) {
           b.classList.add("right");
-          sfx.success();
+          sfx.right();
           data.quiz[c.id] = true;
           store.changed();
           slot.innerHTML = "";
@@ -146,7 +146,7 @@ export function workbench(o: BenchOptions): HTMLElement {
           b.classList.remove("wrong");
           void b.offsetWidth;
           b.classList.add("wrong");
-          sfx.error();
+          sfx.wrong();
           slot.innerHTML = "";
           slot.append(el(`<div class="why">Not quite. Read it line by line, the way Python does, and try another answer. The examples in the lesson have a <b>Try it</b> button.</div>`));
         }
@@ -281,7 +281,7 @@ export function workbench(o: BenchOptions): HTMLElement {
         },
       });
       writeConsole(res, live);
-      sfx.click();
+      sfx.ran();
       explainResult(res, code);
     } catch (err) {
       consoleEl.textContent = String(err instanceof Error ? err.message : err);
@@ -302,18 +302,18 @@ export function workbench(o: BenchOptions): HTMLElement {
       const res = await o.runner.run(code, [], { timeoutMs: 6000, tests: c.tests });
       writeConsole(res, "");
       if (explainResult(res, code)) {
-        sfx.error();
+        sfx.fail();
         return;
       }
       if (res.grade?.passed) {
-        sfx.success();
+        sfx.pass();
         const already = store.isDone(c.id);
         const b = el<HTMLButtonElement>(`<button class="btn gold">${already ? "Close" : `${icon("hammer")} Build the ${esc(c.part.toLowerCase())}`}</button>`);
         b.addEventListener("click", () => (already ? o.close() : o.build()));
         showFeedback("good", "The rune stone glows!", already ? "Still correct. Nicely done." : "Your program works. The valley is ready to build.", b);
         b.focus();
       } else {
-        sfx.error();
+        sfx.fail();
         showFeedback("bad", "Not quite yet", res.grade?.feedback || "Something doesn't match the task yet. Read the task again.");
       }
     } finally {

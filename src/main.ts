@@ -12,6 +12,9 @@ import { World } from "./game/world.ts";
 import { App } from "./ui/app.ts";
 import { store } from "./state.ts";
 import { BUILDINGS } from "./content/index.ts";
+import { settings as soundSettings, soundLog } from "./game/audio.ts";
+import { music } from "./game/music.ts";
+import { soundscape } from "./game/soundscape.ts";
 
 // Python starts loading straight away (in its worker) while the world builds.
 const runner = new PythonRunner();
@@ -57,4 +60,6 @@ window.__pv = {
   build(n: number, id = app.building.id) {
     world.buildStage(id, n);
   },
+  /** What the sound is doing: music scene and piece, nature levels, the recent sound log. */
+  audio: () => ({ ...soundscape.state, musicScene: music.scene, playing: music.playing, settings: soundSettings, log: soundLog.slice(-25) }),
 };

@@ -3,6 +3,8 @@ import type { Building, Challenge } from "../content/types.ts";
 import type { PythonRunner } from "../python/runner.ts";
 import { store, GAME_TITLE } from "../state.ts";
 import { sfx } from "../game/audio.ts";
+import { music } from "../game/music.ts";
+import { soundscape } from "../game/soundscape.ts";
 import type { Resource, World } from "../game/world.ts";
 import { codexBook } from "./codexbook.ts";
 import { esc, md, el } from "./md.ts";
@@ -10,6 +12,7 @@ import { icon } from "./icons.ts";
 import { portrait } from "./portrait.ts";
 import { modelOf, nameTag, toLine, toLines, type Line } from "./speakers.ts";
 import { workbench } from "./workbench.ts";
+import { installUiSounds, soundButton } from "./sound-panel.ts";
 
 const ICON: Record<Resource, string> = { wood: icon("wood"), stone: icon("stone") };
 const ROMAN = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X", "XI", "XII"];
@@ -79,7 +82,9 @@ export class App {
     </div>`);
     buttons.querySelector(".codex-btn")!.addEventListener("click", () => this.openCodex());
     const mute = buttons.querySelector<HTMLButtonElement>(".mute-btn")!;
-    mute.addEventListener("click", () => (mute.innerHTML = icon(sfx.toggleMute() ? "mute" : "sound")));
+    soundButton(mute, this.ui);
+    installUiSounds(this.ui);
+    soundscape.attach(world);
     this.ui.append(this.questEl, res, buttons, this.promptEl);
     store.on(() => this.drawHud());
     this.drawHud();
@@ -90,7 +95,7 @@ export class App {
         if (this.modal) this.closeModal();
         else if (this.dialogEl) this.closeDialog();
       } else if (e.key.toLowerCase() === "c" && !this.modal && !this.dialogEl && !this.world.paused) this.openCodex();
-      else if (e.key.toLowerCase() === "m") mute.click();
+      else if (e.key.toLowerCase() === "m") sfx.toggleMute();
     });
   }
 
@@ -376,6 +381,7 @@ export class App {
     store.complete(c.id, c.cost);
     this.world.paused = true;
     this.world.buildStage(b.id, stage);
+    music.sting(this.finished(b) ? "finish" : "stage");
     await new Promise((r) => setTimeout(r, 3300));
     const lines: Line[] = [toLine(c.done)];
     if (this.finished(b)) {

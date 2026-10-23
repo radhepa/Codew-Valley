@@ -501,6 +501,91 @@ kbd {
   display: flex;
   gap: 10px;
 }
+/* sound panel, above the HUD buttons */
+.sound-panel {
+  position: fixed;
+  right: 18px;
+  bottom: 74px;
+  width: 268px;
+  max-width: calc(100vw - 36px);
+  max-height: calc(100vh - 110px);
+  overflow-y: auto;
+  padding: 14px 16px;
+  z-index: 30;
+  display: grid;
+  gap: 10px;
+}
+.sound-panel .eyebrow {
+  color: var(--cream-3);
+}
+.sound-panel .sliders {
+  display: grid;
+  gap: 6px;
+}
+.sound-panel .slider {
+  display: grid;
+  grid-template-columns: 64px 1fr 28px;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--cream-2);
+}
+.sound-panel .slider b {
+  font-weight: 700;
+  font-size: 0.78rem;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--cream-3);
+}
+.sound-panel input[type="range"] {
+  width: 100%;
+  accent-color: var(--gold);
+  cursor: pointer;
+}
+.sound-panel.muted .sliders {
+  opacity: 0.45;
+}
+.sound-panel .now {
+  font-size: 0.82rem;
+  color: var(--cream-2);
+  font-family: var(--display);
+  font-style: italic;
+}
+.sound-panel .now .lbl {
+  font-family: var(--font);
+  font-style: normal;
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--cream-3);
+  margin-right: 4px;
+}
+.sound-panel .row {
+  display: flex;
+  gap: 8px;
+}
+.sound-panel .row .btn {
+  flex: 1;
+}
+.sound-panel .credits {
+  border-top: 1px solid var(--plate-line);
+  padding-top: 8px;
+  font-size: 0.76rem;
+  line-height: 1.35;
+  color: var(--cream-2);
+}
+.sound-panel .credits p {
+  margin: 0 0 7px;
+}
+.sound-panel .credits b {
+  color: var(--cream);
+}
+.sound-panel .credits span,
+.sound-panel .credits .small {
+  color: var(--cream-3);
+}
 .prompt {
   position: fixed;
   transform: translate(-50%, -100%);
