@@ -60,7 +60,7 @@ const POND = { x: 13, z: 9, r: 4.2 };
 /** Dirt paths (polyline points on the ground). */
 const PATHS: [number, number][][] = [
   [
-    [0, 18],
+    [0, 14],
     [0, 4],
     [0, TAVERN_POS.z + 3.6],
   ],
@@ -81,16 +81,38 @@ const PATHS: [number, number][][] = [
     [24, -2],
     [29, -1],
   ],
-  // bakery and apothecary off the market road
+  // the market road splits round the square to its front entrance (the
+  // southern buildings face the camera, so their doors are on the far side)
   [
-    [0, 15],
-    [8, 17],
-    [12.5, 20],
+    [0, 14],
+    [-5, 15],
+    [-8.6, 17],
+    [-9.2, 21],
+    [-9.2, 29],
+    [-8.4, 31.2],
+    [-4, 32.5],
+    [0, 32.7],
   ],
   [
-    [0, 15],
-    [-8, 17],
-    [-14, 17.5],
+    [0, 14],
+    [5, 15],
+    [8.4, 17],
+    [8.8, 21],
+    [8.8, 29],
+    [8, 31.2],
+    [4, 32.5],
+    [0, 32.7],
+  ],
+  // and on to the apothecary and bakery doors
+  [
+    [-9.2, 28.5],
+    [-12.5, 29.8],
+    [-16, 29.2],
+  ],
+  [
+    [8.8, 28.5],
+    [11.5, 29.8],
+    [14.5, 29.3],
   ],
   // guild hall past the grove, library to the north-west
   [
