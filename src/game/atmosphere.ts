@@ -17,6 +17,28 @@ export const ATMOS = {
   sunDir: new THREE.Vector3(0.62, 0.42, 0.66).normalize(),
 };
 
+/** Weather values the shaders share (weather.ts writes them every frame). */
+export const WEATHER_U = {
+  /** Wind phase: runs faster the stronger the wind, so nothing jumps when it changes. */
+  windTime: { value: 0 },
+  /** 0..1, 0.3 is the gentle default breeze. */
+  wind: { value: 0.3 },
+  /** Direction the wind blows toward, on the ground plane (x, z). */
+  windDir: { value: new THREE.Vector2(1, 0.45).normalize() },
+  /** Cloud shadows on the ground: drift offset x, z, coverage 0..1, darkness 0..1. */
+  cloud: { value: new THREE.Vector4(0, 0, 0.3, 0.42) },
+  /** Rainbow: anti-sun direction xyz, strength. */
+  rainbow: { value: new THREE.Vector4(0, -1, 0, 0) },
+};
+
+/** Sky extras: rain clouds, lightning, cloud colour, stars. */
+export const SKY = {
+  overcast: { value: 0 },
+  flash: { value: 0 },
+  cloudTint: { value: new THREE.Color(1, 0.98, 0.95) },
+  stars: { value: 0 },
+};
+
 const NOISE_GLSL = /* glsl */ `
 float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
 float vnoise(vec2 p) {
@@ -38,6 +60,9 @@ export function createSky(scene: THREE.Scene) {
     sunDir: { value: ATMOS.sunDir },
     sunColor: { value: ATMOS.sunColor },
     time: { value: 0 },
+    cloudShift: { value: new THREE.Vector2() },
+    rainbow: WEATHER_U.rainbow,
+    ...SKY,
   };
   const m = new THREE.ShaderMaterial({
     side: THREE.BackSide,
@@ -51,8 +76,10 @@ export function createSky(scene: THREE.Scene) {
         gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
       }`,
     fragmentShader: /* glsl */ `
-      uniform vec3 zenith, horizon, sunDir, sunColor;
-      uniform float time;
+      uniform vec3 zenith, horizon, sunDir, sunColor, cloudTint;
+      uniform float time, overcast, flash, stars;
+      uniform vec2 cloudShift;
+      uniform vec4 rainbow;
       varying vec3 vDir;
       ${NOISE_GLSL}
       void main() {
@@ -60,16 +87,32 @@ export function createSky(scene: THREE.Scene) {
         float h = clamp(d.y, -0.2, 1.0);
         vec3 col = mix(horizon, zenith, pow(smoothstep(-0.02, 0.85, h), 0.65));
         float sd = max(dot(d, normalize(sunDir)), 0.0);
-        col += sunColor * (pow(sd, 6.0) * 0.22 + pow(sd, 64.0) * 0.35);
-        // clouds on a virtual plane above the valley
-        if (d.y > 0.0) {
-          vec2 uv = d.xz / (d.y + 0.12) * 1.3 + vec2(time * 0.006, time * 0.002);
-          float n = fbm(uv);
-          float c = smoothstep(0.52, 0.78, n) * smoothstep(0.0, 0.22, d.y);
-          float lit = 0.85 + 0.15 * fbm(uv * 2.0 + 3.0);
-          vec3 cloud = mix(vec3(0.93, 0.93, 0.95), vec3(1.0, 0.97, 0.92), sd) * lit;
-          col = mix(col, cloud, c * 0.85);
+        col += sunColor * (pow(sd, 6.0) * 0.22 + pow(sd, 64.0) * 0.35) * (1.0 - overcast * 0.85);
+        // a few stars at night, hidden by cloud
+        if (stars > 0.0 && d.y > 0.05) {
+          vec2 sp = floor(d.xz / (d.y + 0.3) * 160.0);
+          float st = step(0.9965, hash(sp)) * (0.5 + 0.5 * sin(time * 1.7 + hash(sp + 3.0) * 40.0));
+          col += vec3(0.85, 0.9, 1.0) * st * stars * (1.0 - overcast);
         }
+        // rainbow, in the drops left in the air after rain
+        float rb = acos(clamp(dot(d, rainbow.xyz), -1.0, 1.0));
+        float band = (rb - 0.705) / 0.04;
+        if (rainbow.w > 0.0 && abs(band - 0.5) < 0.8) {
+          vec3 spec = clamp(vec3(1.6 - abs(band - 0.95) * 2.6, 1.4 - abs(band - 0.5) * 2.6, 1.3 - abs(band - 0.05) * 2.6), 0.0, 1.0);
+          col += spec * rainbow.w * 0.22 * smoothstep(-0.05, 0.1, d.y);
+        }
+        // clouds on a virtual plane above the valley; rain fills the sky with low grey cloud
+        if (d.y > 0.0) {
+          vec2 uv = d.xz / (d.y + 0.12) * 1.3 + vec2(time * 0.006, time * 0.002) + cloudShift;
+          float n = fbm(uv);
+          float c = smoothstep(0.52 - overcast * 0.42, 0.78 - overcast * 0.3, n) * smoothstep(0.0, 0.22 - overcast * 0.15, d.y);
+          float lit = 0.85 + 0.15 * fbm(uv * 2.0 + 3.0);
+          vec3 cloud = mix(vec3(0.93, 0.93, 0.95), vec3(1.0, 0.97, 0.92), sd * (1.0 - overcast)) * lit;
+          // rain clouds: grey, darker underneath where they are thick
+          cloud = mix(cloud, vec3(0.55, 0.58, 0.62) * (0.75 + 0.35 * lit) * (1.15 - smoothstep(0.4, 0.9, n) * 0.4), overcast);
+          col = mix(col, cloud * cloudTint, c * mix(0.85, 0.97, overcast));
+        }
+        col += vec3(0.75, 0.8, 1.0) * flash * 0.9;
         // haze band at the horizon
         col = mix(col, horizon, smoothstep(0.12, 0.0, abs(h)) * 0.5);
         gl_FragColor = vec4(col, 1.0);
@@ -84,6 +127,8 @@ export function createSky(scene: THREE.Scene) {
   // the dome rides with the camera so it always stays inside the far plane
   return (t: number, camera: THREE.Camera) => {
     uniforms.time.value = t;
+    // the sky's clouds drift the same way as their shadows on the ground
+    uniforms.cloudShift.value.set(WEATHER_U.cloud.value.x * 0.25, WEATHER_U.cloud.value.y * 0.25);
     dome.position.copy(camera.position);
   };
 }
@@ -115,19 +160,27 @@ export function createHills(scene: THREE.Scene) {
 }
 
 /** Shared wind: bends instanced geometry by its height, with gusts rolling across the field. */
-function windMaterial(base: THREE.MeshLambertMaterial, strength: number, uniforms: { time: { value: number } }) {
+function windMaterial(base: THREE.MeshLambertMaterial, strength: number) {
+  const windStrength = { value: strength };
   base.onBeforeCompile = (shader) => {
-    shader.uniforms.time = uniforms.time;
+    shader.uniforms.windTime = WEATHER_U.windTime;
+    shader.uniforms.wind = WEATHER_U.wind;
+    shader.uniforms.windDir = WEATHER_U.windDir;
+    shader.uniforms.windStrength = windStrength;
     shader.vertexShader = shader.vertexShader
-      .replace("#include <common>", `#include <common>\nuniform float time;\n${NOISE_GLSL}`)
+      .replace("#include <common>", `#include <common>
+uniform float windTime, wind, windStrength;
+uniform vec2 windDir;
+${NOISE_GLSL}`)
       .replace(
         "#include <begin_vertex>",
         `#include <begin_vertex>
         vec4 wp = instanceMatrix * vec4(0.0, 0.0, 0.0, 1.0);
-        float gust = fbm(wp.xz * 0.045 + vec2(time * 0.12, time * 0.05));
-        float bend = (sin(time * 1.7 + wp.x * 0.35 + wp.z * 0.21) * 0.35 + gust * 1.2) * ${strength.toFixed(3)};
+        // gusts roll across the field downwind; the breeze sets how far everything leans
+        float gust = fbm(wp.xz * 0.045 - windDir * windTime * 0.16);
+        float bend = (sin(windTime * 2.6 + wp.x * 0.35 + wp.z * 0.21) * 0.35 + gust * 1.2) * windStrength * (0.35 + wind * 2.2);
         float k = position.y * position.y;
-        vec2 windOffset = vec2(bend, bend * 0.45) * k;`,
+        vec2 windOffset = windDir * bend * k;`,
       )
       // bend in world space (after the instance's own rotation) so the whole field leans one way
       .replace(
@@ -140,8 +193,70 @@ function windMaterial(base: THREE.MeshLambertMaterial, strength: number, uniform
         mvPosition = modelViewMatrix * mvPosition;
         gl_Position = projectionMatrix * mvPosition;`,
       );
+    weatherShader(shader);
   };
+  base.customProgramCacheKey = () => "wind+weather";
+  base.userData.weather = true;
   return base;
+}
+
+/** Cloud shadows drifting over the ground and a rainbow in the air: added to every lit material's shader. */
+const WEATHER_FRAG = /* glsl */ `
+uniform vec4 cloud;
+uniform vec4 rainbow;
+float wxHash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+float wxNoise(vec2 p) {
+  vec2 i = floor(p), f = fract(p);
+  vec2 u = f * f * (3.0 - 2.0 * f);
+  return mix(mix(wxHash(i), wxHash(i + vec2(1, 0)), u.x), mix(wxHash(i + vec2(0, 1)), wxHash(i + vec2(1, 1)), u.x), u.y);
+}
+float cloudShade(vec3 wp) {
+  vec2 p = wp.xz * 0.016 + cloud.xy;
+  float n = wxNoise(p) * 0.6 + wxNoise(p * 2.3 + 5.1) * 0.28 + wxNoise(p * 5.1 + 9.7) * 0.12;
+  float c = smoothstep(1.0 - cloud.z - 0.16, 1.0 - cloud.z + 0.2, n);
+  return 1.0 - c * cloud.w;
+}`;
+
+function weatherShader(shader: THREE.WebGLProgramParametersWithUniforms) {
+  shader.uniforms.cloud = WEATHER_U.cloud;
+  shader.uniforms.rainbow = WEATHER_U.rainbow;
+  shader.fragmentShader = shader.fragmentShader
+    .replace("#include <common>", `#include <common>
+${WEATHER_FRAG}`)
+    .replace(
+      "#include <lights_fragment_end>",
+      `#include <lights_fragment_end>
+      vec3 wxWorld = transpose(mat3(viewMatrix)) * (-vViewPosition) + cameraPosition;
+      float wxShade = cloudShade(wxWorld);
+      reflectedLight.directDiffuse *= wxShade;
+      reflectedLight.directSpecular *= wxShade;`,
+    )
+    .replace(
+      "#include <fog_fragment>",
+      `if (rainbow.w > 0.0) {
+        // brighter the more lit drops lie along the view ray
+        vec3 wxRay = wxWorld - cameraPosition;
+        float wxDist = length(wxRay);
+        float wxBand = (acos(clamp(dot(wxRay / wxDist, rainbow.xyz), -1.0, 1.0)) - 0.705) / 0.04;
+        vec3 wxSpec = clamp(vec3(1.6 - abs(wxBand - 0.95) * 2.6, 1.4 - abs(wxBand - 0.5) * 2.6, 1.3 - abs(wxBand - 0.05) * 2.6), 0.0, 1.0);
+        gl_FragColor.rgb += wxSpec * rainbow.w * 0.07 * (1.0 - exp(-wxDist / 45.0));
+      }
+      #include <fog_fragment>`,
+    );
+}
+
+/** Give a lit material cloud shadows and the rainbow (once). */
+export function addWeather(m: THREE.Material) {
+  if (m.userData.weather || !((m as THREE.MeshStandardMaterial).isMeshStandardMaterial || (m as THREE.MeshLambertMaterial).isMeshLambertMaterial)) return;
+  m.userData.weather = true;
+  const prev = m.onBeforeCompile;
+  const prevKey = m.customProgramCacheKey();
+  m.onBeforeCompile = (shader, renderer) => {
+    prev.call(m, shader, renderer);
+    weatherShader(shader);
+  };
+  m.customProgramCacheKey = () => prevKey + "+weather";
+  m.needsUpdate = true;
 }
 
 export interface MeadowOptions {
@@ -154,7 +269,6 @@ export interface MeadowOptions {
 /** Wind-swept tall grass and soft pink flower patches, all instanced. */
 export function createMeadow(scene: THREE.Scene, o: MeadowOptions) {
   const rnd = seeded(4242);
-  const uniforms = { time: { value: 0 } };
 
   // grass blade: a tapered, slightly curved strip, dark at the root and sunlit at the tip
   const blade = new THREE.PlaneGeometry(0.17, 0.8, 1, 4);
@@ -177,7 +291,7 @@ export function createMeadow(scene: THREE.Scene, o: MeadowOptions) {
   const normals = blade.getAttribute("normal");
   for (let i = 0; i < normals.count; i++) normals.setXYZ(i, 0, 1, 0);
 
-  const grassMat = windMaterial(new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide }), 0.28, uniforms);
+  const grassMat = windMaterial(new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide }), 0.28);
   // about the same density whatever the valley size (42k blades fit a radius of 30)
   const COUNT = Math.round(42000 * ((o.radius + 6) / 36) ** 2);
   const grass = new THREE.InstancedMesh(blade, grassMat, COUNT);
@@ -213,8 +327,8 @@ export function createMeadow(scene: THREE.Scene, o: MeadowOptions) {
   head.translate(0, 0.42, 0);
   const stem = new THREE.CylinderGeometry(0.008, 0.01, 0.42, 3);
   stem.translate(0, 0.21, 0);
-  const headMat = windMaterial(new THREE.MeshLambertMaterial({ color: "#FFFFFF" }), 0.12, uniforms);
-  const stemMat = windMaterial(new THREE.MeshLambertMaterial({ color: "#5F7D45" }), 0.12, uniforms);
+  const headMat = windMaterial(new THREE.MeshLambertMaterial({ color: "#FFFFFF" }), 0.12);
+  const stemMat = windMaterial(new THREE.MeshLambertMaterial({ color: "#5F7D45" }), 0.12);
   const FLOWERS = Math.round(3200 * (o.radius / 30) ** 2);
   const heads = new THREE.InstancedMesh(head, headMat, FLOWERS);
   const stems = new THREE.InstancedMesh(stem, stemMat, FLOWERS);
@@ -248,7 +362,9 @@ export function createMeadow(scene: THREE.Scene, o: MeadowOptions) {
     im.receiveShadow = true;
     scene.add(im);
   }
-  return (t: number) => (uniforms.time.value = t);
+  // rain darkens the grass a little
+  const dry = grassMat.color.clone();
+  return (wet: number) => grassMat.color.copy(dry).multiplyScalar(1 - wet * 0.22);
 }
 
 /** Render with gentle bloom: only bright emissive things (lanterns, runes) glow. */

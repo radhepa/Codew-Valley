@@ -16,6 +16,8 @@ const geoBall = new THREE.IcosahedronGeometry(1, 0);
 /** A small pool of short-lived chips, puffs and sparkles. */
 export class Particles {
   private live: P[] = [];
+  /** Wind velocity: smoke, dust and sparkles drift along with it. */
+  wind = new THREE.Vector3();
   constructor(private scene: THREE.Scene) {}
 
   private spawn(shape: "box" | "ball", color: string, size: number, pos: THREE.Vector3, vel: THREE.Vector3, life: number, gravity: number, grow = 0, opacity = 1) {
@@ -68,6 +70,10 @@ export class Particles {
         continue;
       }
       p.vel.y -= p.gravity * dt;
+      if (p.gravity <= 0) {
+        p.vel.x += (this.wind.x - p.vel.x) * dt * 0.5;
+        p.vel.z += (this.wind.z - p.vel.z) * dt * 0.5;
+      }
       p.mesh.position.addScaledVector(p.vel, dt);
       if (p.mesh.position.y < 0.05 && p.gravity > 0) {
         p.mesh.position.y = 0.05;

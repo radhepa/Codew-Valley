@@ -2,7 +2,9 @@ import * as THREE from "three";
 import { model, preload, realModels } from "./models.ts";
 import { Particles } from "./particles.ts";
 import { sfx } from "./audio.ts";
-import { ATMOS, createComposer, createHills, createMeadow, createSky } from "./atmosphere.ts";
+import { ATMOS, WEATHER_U, addWeather, createComposer, createHills, createMeadow, createSky } from "./atmosphere.ts";
+import { Weather } from "./weather.ts";
+import { weatherState } from "./weather-state.ts";
 import type { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer.js";
 import { BUILDINGS } from "../content/index.ts";
 
@@ -243,6 +245,27 @@ function pathDist(x: number, z: number) {
   for (const p of PATHS) for (let i = 0; i < p.length - 1; i++) d = Math.min(d, distToSeg(x, z, p[i], p[i + 1]));
   return d;
 }
+/** Low spots on the paths where puddles gather when it rains. */
+function puddleSpots() {
+  let seed = 77;
+  const rnd = () => ((seed = (seed * 16807) % 2147483647) - 1) / 2147483646;
+  const spots: { x: number; z: number; r: number }[] = [];
+  for (const p of PATHS)
+    for (let i = 0; i < p.length - 1; i++) {
+      const [ax, az] = p[i];
+      const [bx, bz] = p[i + 1];
+      const len = Math.hypot(bx - ax, bz - az);
+      for (let d = 1.5; d < len - 1; d += 2.5 + rnd() * 3) {
+        if (rnd() < 0.45) continue;
+        const off = (rnd() - 0.5) * 0.7;
+        const x = ax + ((bx - ax) * d) / len - ((bz - az) / len) * off;
+        const z = az + ((bz - az) * d) / len + ((bx - ax) / len) * off;
+        if (Math.hypot(x - POND.x, z - POND.z) > POND.r + 1.5) spots.push({ x, z, r: 0.35 + rnd() * 0.45 });
+      }
+    }
+  return spots;
+}
+
 function groundHeight(x: number, z: number) {
   const r = Math.hypot(x, z);
   let y = 0;
@@ -281,6 +304,14 @@ export class World {
   private hooks: WorldHooks;
   private clock = new THREE.Clock();
   private sun!: THREE.DirectionalLight;
+  private hemi!: THREE.HemisphereLight;
+  private groundMat!: THREE.MeshStandardMaterial;
+  /** Rain, wind, cloud and the time of day. */
+  weather!: Weather;
+  /** Lantern glows and lights that brighten at dusk and in rain (base strength in userData.glow / userData.base). */
+  private glows = new Set<THREE.MeshStandardMaterial>();
+  private lamps = new Set<THREE.PointLight>();
+  private butterflyShow = 1;
   private particles: Particles;
   private player!: THREE.Object3D;
   private parts: Record<string, THREE.Object3D | undefined> = {};
@@ -294,7 +325,8 @@ export class World {
   private nodes: Node[] = [];
   private npcs: Npc[] = [];
   private colliders: Collider[] = [];
-  private swaying: { obj: THREE.Object3D; phase: number; base: THREE.Euler }[] = [];
+  /** Leaves and plants sway; cloth flutters faster and leans further downwind. yaw: the parent's world turn, to lean the right way. */
+  private swaying: { obj: THREE.Object3D; phase: number; base: THREE.Euler; cloth?: boolean; yaw?: number }[] = [];
   private butterflies: { obj: THREE.Object3D; phase: number; center: THREE.Vector3 }[] = [];
   private keys = new Set<string>();
   private target: THREE.Vector3 | null = null;
@@ -315,7 +347,7 @@ export class World {
   private nearest: Node | Npc | null = null;
   private composer: EffectComposer;
   private tickSky: (t: number, camera: THREE.Camera) => void = () => {};
-  private tickMeadow: (t: number) => void = () => {};
+  private tickMeadow: (wet: number) => void = () => {};
 
   constructor(canvas: HTMLCanvasElement, hooks: WorldHooks) {
     this.hooks = hooks;
@@ -346,13 +378,32 @@ export class World {
     await this.placeCharacters();
     await this.placeResources();
     await this.placeDecor();
+    this.weather = new Weather(
+      { scene: this.scene, sun: this.sun, hemi: this.hemi, ground: this.groundMat, grassWet: (w) => this.tickMeadow(w), pond: { ...POND, y: -0.18 }, puddles: puddleSpots() },
+      this.camera,
+    );
+    // cloud shadows and the rainbow on everything lit; collect the lanterns for dusk
+    this.scene.traverse((o) => {
+      const m = o as THREE.Mesh;
+      if (m.isMesh) for (const mt of [m.material].flat()) addWeather(mt);
+      const mt = m.material as THREE.MeshStandardMaterial | undefined;
+      if (m.isMesh && mt?.name.toLowerCase().startsWith("glow")) {
+        mt.userData.glow ??= mt.emissiveIntensity;
+        this.glows.add(mt);
+      }
+      if ((o as THREE.PointLight).isPointLight) {
+        o.userData.base ??= (o as THREE.PointLight).intensity;
+        this.lamps.add(o as THREE.PointLight);
+      }
+    });
     this.bindInput();
     this.cam.copy(this.player.position).add(this.camOffset());
     this.camera.position.copy(this.cam);
   }
 
   private lights() {
-    this.scene.add(new THREE.HemisphereLight("#CFE0F0", "#86935F", 1.35));
+    this.hemi = new THREE.HemisphereLight("#CFE0F0", "#86935F", 1.35);
+    this.scene.add(this.hemi);
     const sun = new THREE.DirectionalLight(ATMOS.sunColor, 2.9);
     sun.castShadow = true;
     sun.shadow.mapSize.set(2048, 2048);
@@ -395,7 +446,8 @@ export class World {
     }
     geo.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
     geo.computeVertexNormals();
-    const ground = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1, flatShading: true }));
+    this.groundMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1, flatShading: true });
+    const ground = new THREE.Mesh(geo, this.groundMat);
     ground.receiveShadow = true;
     ground.name = "ground";
     this.scene.add(ground);
@@ -447,7 +499,7 @@ export class World {
         glow.push(m.material as THREE.MeshStandardMaterial);
       }
       if (/^(wheat|herb|awning|banner|net_|bunting|bucket)/i.test(o.name) || (o.name === "sign" && id !== "tavern"))
-        this.swaying.push({ obj: o, phase: o.position.x * 1.7 + o.position.z, base: o.rotation.clone() });
+        this.swaying.push({ obj: o, phase: o.position.x * 1.7 + o.position.z, base: o.rotation.clone(), cloth: /^(awning|banner|net_|bunting)/i.test(o.name) });
       if (/^flag/i.test(o.name)) this.flags.push({ obj: o, phase: o.position.x, base: o.rotation.y });
       if (o.name === "smoke") this.smokers.push({ obj: o, timer: Math.random() * 0.5 });
       if (["sails", "hand_hour", "hand_minute", "gear_01", "gear_02", "bellows_lever"].includes(o.name)) this.special.set(o.name, o);
@@ -486,8 +538,8 @@ export class World {
     site.shown = n;
     site.stages.forEach((st, i) => (st.visible = i < n));
     const lit = n >= SITES[id].litAt;
-    for (const l of site.lights) l.intensity = lit ? 5 : 0;
-    for (const m of site.glow) m.emissiveIntensity = lit ? 2.6 : 0.15;
+    for (const l of site.lights) l.intensity = l.userData.base = lit ? 5 : 0;
+    for (const m of site.glow) m.emissiveIntensity = m.userData.glow = lit ? 2.6 : 0.15;
   }
 
   /** Reveal stage n of a building with a building animation and a short camera move. */
@@ -524,6 +576,7 @@ export class World {
     v.rotation.y = site.villagerRot ?? 0;
     v.userData.rot = site.villagerRot ?? 0;
     this.scene.add(v);
+    if (this.weather) v.traverse((o) => (o as THREE.Mesh).isMesh && [(o as THREE.Mesh).material].flat().forEach(addWeather));
     this.npcs.push({ id: `v:${id}`, obj: v, pos: site.villager, radius: 0.5, label: `Talk to ${b.villager.name}` });
     this.colliders.push({ x: site.villager.x, z: site.villager.z, r: 0.4 });
   }
@@ -826,6 +879,7 @@ export class World {
     else this.animatePlayer(dt, 0);
     if (!this.paused && this.keys.has("e") && this.nearest && "kind" in this.nearest) this.doInteract(this.nearest);
     this.updateNodes(dt);
+    this.weather.update(dt, this.player.position);
     this.updateAmbient(dt);
     this.updateFades(dt);
     this.updateBuild(dt);
@@ -833,7 +887,6 @@ export class World {
     this.updatePrompt();
     this.particles.update(dt);
     this.tickSky(this.time, this.camera);
-    this.tickMeadow(this.time);
     this.composer.render(dt);
   }
 
@@ -947,11 +1000,31 @@ export class World {
 
   private updateAmbient(dt: number) {
     const t = this.time;
+    // everything that moves in the wind follows its strength, leaning downwind
+    const w = weatherState.wind;
+    const wt = this.weather.windTime;
+    const dir = WEATHER_U.windDir.value;
     for (const s of this.swaying) {
-      s.obj.rotation.x = s.base.x + Math.sin(t * 1.1 + s.phase) * 0.025;
-      s.obj.rotation.z = s.base.z + Math.cos(t * 0.8 + s.phase) * 0.025;
+      if (s.yaw === undefined) s.yaw = new THREE.Euler().setFromQuaternion(s.obj.parent?.getWorldQuaternion(new THREE.Quaternion()) ?? new THREE.Quaternion(), "YXZ").y;
+      const lx = dir.x * Math.cos(s.yaw) - dir.y * Math.sin(s.yaw);
+      const lz = dir.x * Math.sin(s.yaw) + dir.y * Math.cos(s.yaw);
+      const amp = s.cloth ? 0.015 + w * 0.08 : 0.01 + w * 0.05;
+      const lean = (s.cloth ? 0.1 : 0.035) * w;
+      const f = s.cloth ? 2.4 : 1;
+      s.obj.rotation.x = s.base.x + lz * lean + Math.sin(wt * 1.1 * f + s.phase) * amp;
+      s.obj.rotation.z = s.base.z - lx * lean + Math.cos(wt * 0.8 * f + s.phase) * amp;
     }
+    this.particles.wind.set(dir.x, 0, dir.y).multiplyScalar(0.2 + w * 2.6);
+    // lanterns glow brighter at dusk, at night and under rain clouds
+    const boost = 1 + this.weather.lamps * 1.3;
+    for (const m of this.glows) m.emissiveIntensity = m.userData.glow > 1 ? m.userData.glow * boost : m.userData.glow;
+    for (const l of this.lamps) l.intensity = l.userData.base * (0.8 + this.weather.lamps * 1.7);
+    // butterflies shelter from rain and settle for the night
+    const show = (1 - THREE.MathUtils.smoothstep(weatherState.rain, 0.08, 0.3)) * (1 - THREE.MathUtils.smoothstep(this.weather.night, 0.4, 0.7));
+    this.butterflyShow = THREE.MathUtils.lerp(this.butterflyShow, show, Math.min(1, dt * 0.8));
     for (const b of this.butterflies) {
+      b.obj.visible = this.butterflyShow > 0.02;
+      b.obj.scale.setScalar(this.butterflyShow);
       const p = b.phase + t * 0.4;
       b.obj.position.set(b.center.x + Math.sin(p) * 3, b.center.y + Math.sin(p * 3) * 0.4, b.center.z + Math.cos(p * 0.7) * 3);
       b.obj.rotation.y = -p;
@@ -991,8 +1064,8 @@ export class World {
     }
     // sails turn once they're up
     const sp = (n: string) => this.special.get(n);
-    if (sp("sails") && this.stagesShown("mill") >= 10) sp("sails")!.rotation.z -= dt * 0.7;
-    for (const f of this.flags) f.obj.rotation.y = f.base + Math.sin(t * 1.9 + f.phase) * 0.18 + Math.sin(t * 8.3 + f.phase) * 0.04;
+    if (sp("sails") && this.stagesShown("mill") >= 10) sp("sails")!.rotation.z -= dt * (0.25 + w * 1.5);
+    for (const f of this.flags) f.obj.rotation.y = f.base + Math.sin(wt * 1.9 + f.phase) * (0.05 + w * 0.42) + Math.sin(wt * 8.3 + f.phase) * (0.01 + w * 0.1);
     if (sp("bellows_lever")) sp("bellows_lever")!.rotation.x = Math.sin(t * 2.2) * 0.17;
     // the clock runs once the tower is finished (it stopped at the Long Quiet)
     if (sp("hand_hour") && this.stagesShown("clocktower") >= 14) {

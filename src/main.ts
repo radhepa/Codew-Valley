@@ -60,6 +60,9 @@ window.__pv = {
   build(n: number, id = app.building.id) {
     world.buildStage(id, n);
   },
+  /** Force the weather ("clear", "drizzle", "rain", "storm", "rainbow"); time(0.5) is noon, hold = stop the clock. */
+  weather: (kind: Parameters<World["weather"]["force"]>[0], now = false) => world.weather.force(kind, now),
+  time: (tod: number, hold = false) => (world.weather.setTime(tod), (world.weather.hold = hold)),
   /** What the sound is doing: music scene and piece, nature levels, the recent sound log. */
   audio: () => ({ ...soundscape.state, musicScene: music.scene, playing: music.playing, settings: soundSettings, log: soundLog.slice(-25) }),
 };
