@@ -64,6 +64,12 @@ print("Stew is ready")  # so is this part`, out: "Stew is ready" },
       { code: r`logs = 12
 print(logs)`, out: "12" },
       { p: "Read `logs = 12` as \"logs **gets** 12\". The name goes on the left, the value on the right." },
+      { h: "Printing a label with a value" },
+      { p: "Give `print()` a label in quotes and a variable, separated by a **comma**. It puts one space between them for you:" },
+      { code: r`logs = 12
+stones = 30
+print("Logs:", logs)
+print("Stones:", stones)`, out: "Logs: 12\nStones: 30" },
       { h: "Names vs text" },
       { p: "Without quotes, Python looks up the variable. With quotes, it is just text." },
       { code: r`logs = 12
@@ -156,10 +162,10 @@ print(type(True))`, out: "<class 'int'>\n<class 'float'>\n<class 'str'>\n<class 
       { p: "`int` is a whole number, `float` a decimal number, `str` a string of text, `bool` is `True` or `False`." },
       { h: "Converting" },
       { p: "`int()`, `float()` and `str()` make a new value of that type:" },
-      { code: r`panes = "6"
-print(int(panes) + 4)
+      { code: r`eggs = "6"
+print(int(eggs) + 4)
 print(float("2.5") * 2)
-print("Panes: " + str(10))`, out: "10\n5.0\nPanes: 10" },
+print("Eggs: " + str(10))`, out: "10\n5.0\nEggs: 10" },
       { p: "Notice `\"6\" + \"4\"` would be `\"64\"`: strings are glued, not added. Convert first when you want maths." },
       { code: r`print("6" + "4")
 print(int("6") + int("4"))`, out: "64\n10" },
@@ -246,7 +252,7 @@ print(night or oil > 0)
 print(not night)`, out: "False\nTrue\nFalse" },
       { p: "Strings can be compared too. Capitals matter:" },
       { code: r`print("pip" == "Pip")`, out: "False" },
-      { tip: "Write the comparison itself, like `full = guests >= 8`, instead of typing `True`. Then the answer stays right when the numbers change." },
+      { tip: "Write the comparison itself, like `cold = heat < 10`, instead of typing `True`. Then the answer stays right when the numbers change." },
     ],
   },
   {
@@ -273,11 +279,11 @@ ring_done = stakes == 8
 print(ring_done)`, out: "True" },
       { h: "Comparing text" },
       { p: "Strings can be compared with `==` too, but every character must match, **capitals included**. Tidy text with `.strip()` and `.lower()` before comparing:" },
-      { code: r`word = "Wheat"
-print(word == "wheat")
-print(word.lower() == "wheat")
-spoken = "  WHEAT "
-print(spoken.strip().lower() == "wheat")`, out: "False\nTrue\nTrue" },
+      { code: r`word = "Yes"
+print(word == "yes")
+print(word.lower() == "yes")
+answer = "  YES "
+print(answer.strip().lower() == "yes")`, out: "False\nTrue\nTrue" },
       { p: "`<` and `>` on strings compare in dictionary order:" },
       { code: r`print("apple" < "barley")`, out: "True" },
       { h: "Numbers and text are never equal" },
@@ -304,12 +310,12 @@ print("Done checking.")`, out: "Done checking." },
       { h: "The parts of an if" },
       { p: "`if`, then a condition, then a **colon** `:`. The lines that belong to the if go underneath, each indented by **four spaces**. That indented group is called a **block**." },
       { p: "A block can hold as many lines as you like, including ones that change variables:" },
-      { code: r`stone = 12
-needed = 10
-if stone >= needed:
-    print("Laying the plinth.")
-    stone = stone - needed
-print(f"Stone left: {stone}")`, out: "Laying the plinth.\nStone left: 2" },
+      { code: r`flour = 9
+per_loaf = 4
+if flour >= per_loaf:
+    print("Baking a loaf.")
+    flour = flour - per_loaf
+print(f"Flour left: {flour}")`, out: "Baking a loaf.\nFlour left: 5" },
       { h: "Forgetting the colon" },
       { p: "Without the colon, Python stops with `expected ':'`:" },
       { code: r`wind = 12
@@ -324,43 +330,43 @@ if wind > 10
     summary: "Two choices with else, many choices with elif. Order matters.",
     blocks: [
       { p: "`else:` gives the if a second path. It has **no condition**: it runs whenever the if's condition was `False`. Exactly one of the two blocks runs." },
-      { code: r`hours = 2
-if hours >= 4:
-    print("Stack the stones.")
+      { code: r`rested = 1
+if rested >= 3:
+    print("Into the oven.")
 else:
-    print("Wait for the mortar.")`, out: "Wait for the mortar." },
+    print("Let the dough rise.")`, out: "Let the dough rise." },
       { p: "`else:` lines up with its `if` (same indentation), and its own lines are indented under it." },
       { h: "elif: more than two choices" },
       { p: "`elif` means \"else, if\". Python checks each condition from the top and runs only the **first** block whose condition is `True`. Everything after that is skipped. The final `else` catches whatever is left." },
-      { code: r`wind = 18
-if wind >= 30:
-    print("Too windy!")
-elif wind >= 15:
-    print("Work inside.")
+      { code: r`heat = 20
+if heat >= 40:
+    print("Too hot! Open the oven door.")
+elif heat >= 15:
+    print("Perfect for baking.")
 else:
-    print("Raise the band.")`, out: "Work inside." },
+    print("Add more wood.")`, out: "Perfect for baking." },
       { h: "Order matters" },
-      { p: "Because only the first True branch runs, put the most specific (or most extreme) case first. Here a gale of 35 stops at the first check, which is the wrong one:" },
-      { code: r`wind = 35
-if wind >= 15:
-    print("Work inside.")
-elif wind >= 30:
-    print("Too windy!")`, out: "Work inside." },
+      { p: "Because only the first True branch runs, put the most specific (or most extreme) case first. Here a scorching 45 stops at the first check, which is the wrong one:" },
+      { code: r`heat = 45
+if heat >= 15:
+    print("Perfect for baking.")
+elif heat >= 40:
+    print("Too hot! Open the oven door.")`, out: "Perfect for baking." },
       { h: "elif vs separate ifs" },
       { p: "Two separate `if`s are two separate questions, and both can run. Use `elif` when only **one** answer should happen:" },
-      { code: r`wind = 35
-if wind >= 30:
-    print("Too windy!")
-if wind >= 15:
-    print("Work inside.")`, out: "Too windy!\nWork inside." },
+      { code: r`heat = 45
+if heat >= 40:
+    print("Too hot! Open the oven door.")
+if heat >= 15:
+    print("Perfect for baking.")`, out: "Too hot! Open the oven door.\nPerfect for baking." },
       { h: "Choosing a value" },
       { p: "Branches can set a variable, then you use it afterwards. Handy for getting a word just right:" },
       { code: r`n = 1
 if n == 1:
-    word = "sack"
+    word = "loaf"
 else:
-    word = "sacks"
-print(f"{n} {word}")`, out: "1 sack" },
+    word = "loaves"
+print(f"{n} {word}")`, out: "1 loaf" },
       { tip: "Python spells it `elif`. Writing `else if` is a `SyntaxError`, and so is giving `else` a condition." },
       { code: r`x = 5
 if x > 9:
@@ -381,31 +387,31 @@ print(raining or wind > 25)
 print(raining and wind > 25)
 print(not raining)`, out: "True\nFalse\nTrue" },
       { p: "They are most useful inside an if:" },
-      { code: r`hour = 19
-candles = 3
-if hour >= 18 and candles > 0:
-    print("Light a candle.")`, out: "Light a candle." },
+      { code: r`hungry = True
+coins = 3
+if hungry and coins >= 2:
+    print("Buy a pie.")`, out: "Buy a pie." },
       { h: "not" },
       { p: "`if not ready:` reads like English and runs when `ready` is False. `not` happens before `and`, and `and` before `or`. Use brackets to make your meaning clear:" },
       { code: r`print(not True and False)
 print(not (True and False))`, out: "False\nTrue" },
-      { code: r`railing_done = True
-boards = 10
-ready = railing_done and boards >= 16
+      { code: r`oven_hot = True
+loaves = 2
+ready = oven_hot and loaves >= 4
 if not ready:
-    print("Keep off!")`, out: "Keep off!" },
+    print("Not yet!")`, out: "Not yet!" },
       { h: "The or trap" },
       { p: "Each side of `or` must be a whole condition. This looks right but is not:" },
-      { code: r`sky = "sunny"
-if sky == "rainy" or "stormy":
-    print("Lanterns lit")`, out: "Lanterns lit" },
-      { p: "Python reads it as `(sky == \"rainy\") or (\"stormy\")`, and a non-empty string counts as True (see **Truthiness**). Repeat the comparison on both sides:" },
-      { code: r`sky = "sunny"
-if sky == "rainy" or sky == "stormy":
-    print("Lanterns lit")
+      { code: r`drink = "milk"
+if drink == "tea" or "cocoa":
+    print("A warm cup")`, out: "A warm cup" },
+      { p: "Python reads it as `(drink == \"tea\") or (\"cocoa\")`, and a non-empty string counts as True (see **Truthiness**). Repeat the comparison on both sides:" },
+      { code: r`drink = "milk"
+if drink == "tea" or drink == "cocoa":
+    print("A warm cup")
 else:
-    print("Lanterns out")`, out: "Lanterns out" },
-      { tip: "Same with and: write `hour >= 18 and candles > 0`, never `hour >= 18 and > 0`." },
+    print("A cold cup")`, out: "A cold cup" },
+      { tip: "Same with and: write `coins >= 2 and coins <= 9`, never `coins >= 2 and <= 9`." },
     ],
   },
   {
@@ -414,21 +420,21 @@ else:
     summary: "\"tar\" in cart, not in, and the substring surprise.",
     blocks: [
       { p: "`in` checks whether one piece of text appears **anywhere inside** another. `not in` asks the opposite." },
-      { code: r`cart = "shingles, nails, rope"
-print("nails" in cart)
-print("tar" in cart)
-print("tar" not in cart)`, out: "True\nFalse\nTrue" },
+      { code: r`basket = "apples, bread, cheese"
+print("bread" in basket)
+print("eggs" in basket)
+print("eggs" not in basket)`, out: "True\nFalse\nTrue" },
       { p: "It is great in an if:" },
-      { code: r`cart = "oats, honey"
-if "honey" in cart:
+      { code: r`basket = "oats, honey"
+if "honey" in basket:
     print("Sweet!")`, out: "Sweet!" },
       { h: "Capitals matter" },
-      { code: r`cart = "shingles, nails, rope"
-print("Nails" in cart)
-print("nails" in cart.lower())`, out: "False\nTrue" },
+      { code: r`basket = "Apples, Bread"
+print("bread" in basket)
+print("bread" in basket.lower())`, out: "False\nTrue" },
       { h: "The substring surprise" },
-      { p: "`in` looks for the **letters**, not whole words. \"star\" has \"tar\" hiding inside it:" },
-      { code: r`print("tar" in "star anise")`, out: "True" },
+      { p: "`in` looks for the **letters**, not whole words. \"magpie\" has \"pie\" hiding inside it:" },
+      { code: r`print("pie" in "magpie feathers")`, out: "True" },
       { tip: "`in` works on lists too, and there it does match whole items. You'll meet lists at the Market Square." },
     ],
   },
@@ -438,25 +444,25 @@ print("nails" in cart.lower())`, out: "False\nTrue" },
     summary: "An if inside an if, and which else belongs to which.",
     blocks: [
       { p: "A block can contain another if. The inner question is only asked when the outer one was True. That's a **nested if**." },
-      { code: r`brake_on = False
-grease = 1
-if not brake_on:
-    if grease >= 2:
-        print("Turns smoothly.")
+      { code: r`door_open = False
+logs = 1
+if not door_open:
+    if logs >= 3:
+        print("The bread bakes.")
     else:
-        print("Squeak!")
+        print("Too cold. Add logs.")
 else:
-    print("Brake is on.")`, out: "Squeak!" },
+    print("Shut the oven door.")`, out: "Too cold. Add logs." },
       { p: "Look at the indentation levels: the outer `if`/`else` start at the edge, the inner `if`/`else` are 4 spaces in, and the inner prints are 8 spaces in." },
       { h: "Which if does an else belong to?" },
-      { p: "An `else` belongs to the `if` it lines up with. Move it and the meaning changes completely. Here the else belongs to the **outer** if, so with grease 1 nothing prints at all:" },
-      { code: r`brake_on = False
-grease = 1
-if not brake_on:
-    if grease >= 2:
-        print("Turns smoothly.")
+      { p: "An `else` belongs to the `if` it lines up with. Move it and the meaning changes completely. Here the else belongs to the **outer** if, so with 1 log nothing prints at all:" },
+      { code: r`door_open = False
+logs = 1
+if not door_open:
+    if logs >= 3:
+        print("The bread bakes.")
 else:
-    print("Squeak!")`, out: "" },
+    print("Too cold. Add logs.")`, out: "" },
       { tip: "Nesting is great when one question only makes sense after another. If the levels get deep, an `and` or an `elif` chain is often flatter and easier to read." },
     ],
   },
@@ -470,24 +476,24 @@ else:
 print(bool(7))
 print(bool(""))
 print(bool("Pip"))`, out: "False\nTrue\nFalse\nTrue" },
-      { p: "So `if helper:` means \"if there is a helper\":" },
-      { code: r`helper = ""
-if helper:
-    print(f"{helper} holds the ladder.")
+      { p: "So `if guest:` means \"if there is a guest\":" },
+      { code: r`guest = ""
+if guest:
+    print(f"{guest} takes a seat.")
 else:
-    print("Nobody holds the ladder.")`, out: "Nobody holds the ladder." },
+    print("The table is empty.")`, out: "The table is empty." },
       { h: "Don't compare with True" },
       { p: "A name is truthy, but it is not **equal** to `True`:" },
-      { code: r`helper = "Pip"
-print(helper == True)
-print(bool(helper))`, out: "False\nTrue" },
-      { p: "Just write `if helper:`, never `if helper == True:`." },
+      { code: r`guest = "Bram"
+print(guest == True)
+print(bool(guest))`, out: "False\nTrue" },
+      { p: "Just write `if guest:`, never `if guest == True:`." },
       { h: "Even or odd" },
       { p: "`%` gives the remainder of a division. Even numbers leave remainder 0 when divided by 2, odd numbers leave 1:" },
       { code: r`print(6 % 2)
 print(7 % 2)`, out: "0\n1" },
-      { code: r`cloths = 7
-if cloths % 2 == 0:
+      { code: r`eggs = 7
+if eggs % 2 == 0:
     print("Even")
 else:
     print("Odd")`, out: "Odd" },
@@ -500,21 +506,21 @@ else:
     summary: "Check a range in one go: 30 <= x <= 60.",
     blocks: [
       { p: "To check that a value is between two others, Python lets you **chain** comparisons, just like in maths:" },
-      { code: r`moisture = 45
-print(30 <= moisture <= 60)
-print(30 <= 75 <= 60)`, out: "True\nFalse" },
-      { p: "`30 <= x <= 60` means exactly the same as `30 <= x and x <= 60`:" },
-      { code: r`x = 45
-print(30 <= x and x <= 60)`, out: "True" },
+      { code: r`oven = 200
+print(180 <= oven <= 220)
+print(180 <= 250 <= 220)`, out: "True\nFalse" },
+      { p: "`180 <= x <= 220` means exactly the same as `180 <= x and x <= 220`:" },
+      { code: r`x = 200
+print(180 <= x and x <= 220)`, out: "True" },
       { h: "Is the edge included?" },
-      { p: "`<=` includes the edge, `<` doesn't. Pick carefully when the task says \"from 30 to 60\":" },
-      { code: r`x = 30
-print(30 < x < 60)
-print(30 <= x <= 60)`, out: "False\nTrue" },
+      { p: "`<=` includes the edge, `<` doesn't. Pick carefully when the task says \"from 180 to 220\":" },
+      { code: r`x = 180
+print(180 < x < 220)
+print(180 <= x <= 220)`, out: "False\nTrue" },
       { h: "A chain that doesn't mean what it looks like" },
-      { p: "Keep the variable in the **middle**. This one really means `x >= 30 and 30 <= 60`, so any big number passes:" },
-      { code: r`x = 99
-print(x >= 30 <= 60)`, out: "True" },
+      { p: "Keep the variable in the **middle**. This one really means `x >= 180 and 180 <= 220`, so any big number passes:" },
+      { code: r`x = 999
+print(x >= 180 <= 220)`, out: "True" },
       { tip: "Write ranges small-to-big, left-to-right: `low <= x <= high`. It reads like a number line." },
     ],
   },
@@ -526,11 +532,11 @@ print(x >= 30 <= 60)`, out: "True" },
       { p: "`min()` gives the smallest of its values and `max()` the biggest. They take as many values as you like." },
       { code: r`print(min(12, 9))
 print(max(14.6, 11.2, 13.9))`, out: "9\n14.6" },
-      { p: "`min` is perfect for limits: you can only sell what you have, so `sold = min(wanted, stock)`." },
-      { code: r`wanted = 12
-stock = 8
-sold = min(wanted, stock)
-print(sold)`, out: "8" },
+      { p: "`min` is perfect for limits: you can only serve the pies you baked, so `served = min(asked, baked)`." },
+      { code: r`asked = 12
+baked = 8
+served = min(asked, baked)
+print(served)`, out: "8" },
       { h: "abs: distance from zero" },
       { p: "`abs()` drops the minus sign. Use it for \"how far apart\", when you don't care which is bigger:" },
       { code: r`print(abs(-4))
@@ -541,19 +547,19 @@ print(abs(11 - 13))`, out: "4\n4\n2" },
       { code: r`print(round(13.2333, 1))
 print(round(7.8))`, out: "13.2\n8" },
       { p: "Brackets first when you take an average, then round:" },
-      { code: r`a = 14.6
-b = 11.2
-c = 13.9
-average = round((a + b + c) / 3, 1)
-print(average)`, out: "13.2" },
+      { code: r`a = 4.2
+b = 3.9
+c = 5.0
+mean = round((a + b + c) / 3, 1)
+print(mean)`, out: "4.4" },
       { h: "Deciding with them" },
-      { code: r`target = 13
-average = 11.2
-off_by = round(abs(average - target), 1)
-if off_by <= 1:
-    print("On time")
+      { code: r`goal = 5
+weight = 3.2
+gap = round(abs(weight - goal), 1)
+if gap <= 1:
+    print("Close enough")
 else:
-    print(f"Off by {off_by}")`, out: "Off by 1.8" },
+    print(f"Short by {gap}")`, out: "Short by 1.8" },
       { tip: "Halfway numbers round to the nearest **even** number: `round(2.5)` is 2 and `round(3.5)` is 4. Python does this on purpose so totals don't drift upward." },
       { code: r`print(round(2.5))
 print(round(3.5))`, out: "2\n4" },

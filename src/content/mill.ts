@@ -77,7 +77,7 @@ export const MILL: Building = {
       cost: { wood: 3, stone: 0 },
       intro: [
         "Wren: Before a single stone goes down, I read the wind. A mill on a still hill is just a very tall shed.",
-        "Let's ask the rune stone some questions. A **comparison** like `wind >= 10` answers with `True` or `False`.",
+        "Let's ask the rune stone some questions. A **comparison** like `wind < 5` answers with `True` or `False`.",
         "And remember: one `=` stores a value, two `==` asks \"are these equal?\".",
       ],
       codex: ["comparisons", "booleans"],
@@ -109,18 +109,18 @@ print(f"Too strong: {too_strong}")
 `,
       tests: PRE + r`for name in ["good_wind", "ring_done", "too_strong"]:
     check(name in ns, "Create the variable " + name + " before the print lines use it.")
-    check(isinstance(ns[name], bool), name + " holds " + repr(ns[name]) + ", not True or False. A single = stores a value; == compares two values. Example: ring_done = stakes_placed == stakes_needed")
-check(ns["good_wind"] is True, "With wind 14, good_wind should be True. Compare: wind >= 10")
-check(ns["ring_done"] is True, "8 stakes placed and 8 needed, so ring_done should be True. Compare them with ==.")
-check(ns["too_strong"] is False, "Wind 14 is not more than 25, so too_strong should be False. Compare: wind > 25")
+    check(isinstance(ns[name], bool), name + " holds " + repr(ns[name]) + ", not True or False. Put a comparison on the right of the =. Remember: a single = stores a value, but == compares two values.")
+check(ns["good_wind"] is True, "With wind 14, good_wind should be True. Which comparison means \"10 or more\"?")
+check(ns["ring_done"] is True, "8 stakes placed and 8 needed, so ring_done should be True. Ask whether the two are equal.")
+check(ns["too_strong"] is False, "Wind 14 is not more than 25, so too_strong should be False.")
 expect_lines(["Good wind: True", "Ring done: True", "Too strong: False"])
 expect_when([("wind = 14", "wind = 10")], ["Good wind: True", "Ring done: True", "Too strong: False"], "10 counts as good wind: \"10 or more\" is >=.")
 expect_when([("wind = 14", "wind = 6")], ["Good wind: False", "Ring done: True", "Too strong: False"], "Compare wind with 10 instead of typing True.")
 expect_when([("wind = 14", "wind = 30")], ["Good wind: True", "Ring done: True", "Too strong: True"], "Compare wind with 25 instead of typing False.")
 expect_when([("stakes_placed = 8", "stakes_placed = 7")], ["Good wind: True", "Ring done: False", "Too strong: False"], "Compare stakes_placed with stakes_needed instead of typing True.")`,
       hints: [
-        "A comparison is a value all by itself: `good_wind = wind >= 10` stores True or False.",
-        "Equal is `==` (two signs). More than is `>`. 10 or more is `>=`.",
+        "Each variable stores the answer to a yes/no question. Write the question as a comparison on the right of `=`, and Python stores True or False.",
+        "Translate the words: \"10 or more\" is `>= 10`, \"more than 25\" is `> 25`, and \"equals\" is `==` (two signs, because one `=` stores).",
         "`good_wind = wind >= 10`, `ring_done = stakes_placed == stakes_needed`, `too_strong = wind > 25`",
       ],
       solution: r`wind = 14
@@ -208,9 +208,9 @@ expect_when([("stone = 12", "stone = 7")], ["Stone left: 7"], "With too little s
 expect_when([("stone = 12", "stone = 10")], ["Laying the plinth.", "Stone left: 0"], "Exactly enough is enough: \"at least\" is >=.")
 expect_when([("needed = 10", "needed = 4")], ["Laying the plinth.", "Stone left: 8"], "Use the variable needed instead of typing 10.")`,
       hints: [
-        "An if looks like `if stone >= needed:` with a colon at the end.",
-        "Indent the lines that belong inside the if by four spaces. `stone = stone - needed` goes in there too.",
-        "`if stone >= needed:` then, indented, `print(\"Laying the plinth.\")` and `stone = stone - needed`.",
+        "Read the task as a sentence: *if* there is at least as much stone as the plinth needs, *then* do two things. Only those two things depend on the answer.",
+        "An if line is `if`, a comparison, then a colon: \"at least\" is `>=`. Every line that belongs to it is indented four spaces, and the subtraction works like `wood = wood - 8` did at the tavern.",
+        "`if stone >= needed:` then, indented, `print(\"Laying the plinth.\")` and `stone = stone - needed`. The last print stays at the edge.",
       ],
       solution: r`stone = 12
 needed = 10
@@ -287,8 +287,8 @@ expect_when([("hours_dried = 5", "hours_dried = 4")], ["Stack the next course.",
 expect_when([("wall_height = 2", "wall_height = 1")], ["Stack the next course.", "Wall height: 2 m"], "Add 1 to wall_height (wall_height = wall_height + 1) instead of setting it to 3.")
 check("else" in src, "Use else: for the \"otherwise\" part.")`,
       hints: [
-        "Start with `if hours_dried >= 4:` and indent the two lines that belong to it.",
-        "`else:` lines up with the `if` (no spaces before it) and has no condition. Its own line is indented under it.",
+        "Two paths, and exactly one of them runs: dry enough, or not yet. The question to ask is about `hours_dried` and the number 4.",
+        "`if hours_dried >= 4:` with its two indented lines. Then `else:` lines up with the `if` (no spaces before it) and has no condition. Its own line is indented under it.",
         "`if hours_dried >= 4:` / `    print(\"Stack the next course.\")` / `    wall_height = wall_height + 1` / `else:` / `    print(\"Wait for the mortar to dry.\")`",
       ],
       solution: r`wall_height = 2
@@ -376,8 +376,8 @@ expect_when([("wind = 18", "wind = 15")], ["Lay stones from the inside."], "15 c
 expect_when([("wind = 18", "wind = 5")], ["Raise the timber band."], "A gentle wind should reach the else.")
 check("elif" in src, "Use elif for the middle case.")`,
       hints: [
-        "Three branches: `if ...:`, `elif ...:`, `else:`. Each ends with a colon and has its print indented under it.",
-        "Order matters! Put `wind >= 30` first. If `wind >= 15` came first, a gale of 35 would stop there.",
+        "Only one rule may ever be followed, so this is one chain, not three separate ifs. Which wind is the scariest? Python tries the branches top to bottom.",
+        "`if ...:`, `elif ...:`, `else:`, each ending with a colon and each with its print indented. Put `wind >= 30` first: if `wind >= 15` came first, a gale of 35 would stop there.",
         "`if wind >= 30:` / `elif wind >= 15:` / `else:`, each with its own indented print.",
       ],
       solution: r`wind = 18
@@ -447,14 +447,16 @@ else:
 `,
       tests: PRE + r`check("word" in ns, "Make a variable word: spoken without the outside spaces, in lowercase.")
 check(isinstance(ns["word"], str), "word isn't text. Did you forget the () after a method? It's .lower(), not .lower")
-check(ns["word"] == "wheat", "word should be \"wheat\" but it is " + repr(ns["word"]) + ". Use .strip() to remove the spaces and .lower() to make it lowercase, like spoken.strip().lower()")
+check(ns["word"].strip() == ns["word"], "word is " + repr(ns["word"]) + ". It still has spaces at the ends. Which method trims them?")
+check(ns["word"] == ns["word"].lower(), "word is " + repr(ns["word"]) + ". It still has capital letters. Which method makes every letter small?")
+check(ns["word"] == "wheat", "word should be \"wheat\" but it is " + repr(ns["word"]) + ". Build it from spoken.")
 expect_lines(["The door swings open."])
 expect_when([('spoken = "  WHEAT "', 'spoken = "Wheat"')], ["The door swings open."])
 expect_when([('spoken = "  WHEAT "', 'spoken = "wHeAt   "')], ["The door swings open."], "Compare the tidied word, not spoken.")
 expect_when([('spoken = "  WHEAT "', 'spoken = "barley"')], ["The door stays shut."], "Only the miller's word opens the door. Use if / else with word == \"wheat\".")`,
       hints: [
-        "Methods can be chained: `spoken.strip().lower()` strips first, then lowercases.",
-        "Compare with two equals signs and all-lowercase text: `if word == \"wheat\":`",
+        "Two clean-up jobs come first: take off the outside spaces, and make every letter small. Only then compare. There's a string method for each job.",
+        "Methods can be chained, left to right: `.strip()` then `.lower()`, both on `spoken`. Compare the result with `==` and an all-lowercase `\"wheat\"`.",
         "`word = spoken.strip().lower()` then `if word == \"wheat\":` print the open line, `else:` print the shut line.",
       ],
       solution: r`spoken = "  WHEAT "
@@ -517,10 +519,8 @@ wind = 12
 hour = 19       # 0 is midnight, 13 is one in the afternoon
 candles = 3
 
-# 1. If it is raining OR the wind is over 25:   print Shutters closed.
-#    Otherwise:                                 print Shutters open.
-# 2. If the hour is 18 or later AND there is at least one candle:
-#                                               print A candle in the window.
+# 1. The shutters
+# 2. The candle
 `,
       tests: PRE + r`expect_lines(["Shutters open.", "A candle in the window."])
 expect_when([("raining = False", "raining = True")], ["Shutters closed.", "A candle in the window."], "Rain alone is reason enough to close them: join the two conditions with or.")
@@ -530,8 +530,8 @@ expect_when([("hour = 19", "hour = 12")], ["Shutters open."], "No candle at noon
 expect_when([("hour = 19", "hour = 18")], ["Shutters open.", "A candle in the window."], "\"18 or later\" includes 18: hour >= 18.")
 expect_when([("candles = 3", "candles = 0")], ["Shutters open."], "No candles, no candle in the window. Both things must be true: join them with and.")`,
       hints: [
-        "Each side of `or` / `and` must be a whole comparison: `raining or wind > 25`.",
-        "The candle needs both: `hour >= 18 and candles > 0`. It has no else.",
+        "These are two separate decisions, so two separate ifs. The shutters always say something (open or closed), so that if needs an else. The candle line either prints or doesn't, so no else.",
+        "Shutters: either reason is enough, so `or`. Candle: both must be true, so `and`. Each side must be a whole question on its own, like `wind > 25`. `raining` is already True or False, so it can stand alone.",
         "`if raining or wind > 25:` closed, `else:` open. Then `if hour >= 18 and candles > 0:` print the candle line.",
       ],
       solution: r`raining = False
@@ -609,24 +609,23 @@ print("A candle in the window.")`],
 boards = 18
 needed = 16
 
-# ready =   (railing done AND enough boards)
+# ready =
 
 print(f"Ready: {ready}")
-# If the gallery is NOT ready:  print Keep off the gallery, Wren!
-# Otherwise:                    print Step out and enjoy the view.
+# Now the if not ready: ... else: ...
 `,
-      tests: PRE + r`check("ready" in ns, "Create the variable ready: railing_done and boards >= needed")
-check(isinstance(ns["ready"], bool), "ready should be True or False, but it is " + repr(ns["ready"]) + ".")
-check(ns["ready"] is False, "The railing isn't done, so ready should be False. Both things must be true: railing_done and boards >= needed")
+      tests: PRE + r`check("ready" in ns, "Make a variable called ready (True or False) before the Ready: line prints it.")
+check(isinstance(ns["ready"], bool), "ready should be True or False, but it is " + repr(ns["ready"]) + ". Build it from railing_done and a comparison of boards with needed.")
+check(ns["ready"] is False, "The railing isn't done, so ready should be False. Both things must be true for the gallery to be ready.")
 expect_lines(["Ready: False", "Keep off the gallery, Wren!"])
 expect_when([("railing_done = False", "railing_done = True")], ["Ready: True", "Step out and enjoy the view."], "Railing done and 18 boards: the gallery is ready.")
 expect_when([("railing_done = False", "railing_done = True"), ("boards = 18", "boards = 10")], ["Ready: False", "Keep off the gallery, Wren!"], "A railing with too few boards still isn't ready.")
 expect_when([("railing_done = False", "railing_done = True"), ("boards = 18", "boards = 16")], ["Ready: True", "Step out and enjoy the view."], "16 boards is enough: \"at least\" is >=.")
 check("if not" in src, "Use not to flip ready: if not ready:")`,
       hints: [
-        "`ready = railing_done and boards >= needed`",
-        "`if not ready:` runs its block when ready is False.",
-        "`if not ready:` print the keep-off line, `else:` print the view line.",
+        "ready is one True/False made of two facts: is the railing done, and are there enough boards? Which word joins two facts that must both be true?",
+        "`railing_done` is already True or False. \"Enough boards\" is a comparison: `boards >= needed`. Join them with `and`. Then `if not ready:` runs its block when ready is False.",
+        "`ready = railing_done and boards >= needed`, then `if not ready:` print the keep-off line, `else:` print the view line.",
       ],
       solution: r`railing_done = False
 boards = 18
@@ -688,7 +687,7 @@ else:
       intro: [
         "The cap is the mill's hat. It needs shingles and tar. Wren packed the cart this morning. Probably.",
         "Wren: I definitely packed... things.",
-        "`\"tar\" in cart` is True when the text `tar` appears anywhere inside `cart`. And `not in` asks the opposite.",
+        "`\"rope\" in cart` is True when the text `rope` appears anywhere inside `cart`. And `not in` asks the opposite.",
       ],
       codex: ["in"],
       quiz: {
@@ -707,12 +706,10 @@ print("tar" in cart)`,
       ],
       starter: r`cart = "shingles, nails, rope, cheese sandwich"
 
-# has_shingles =   (is "shingles" in the cart?)
-# has_tar =        (is "tar" in the cart?)
+# has_shingles =
+# has_tar =
 
-# If both are packed:            print Up to the cap we go!
-# Else, if "tar" is not in it:   print Pip, fetch the tar!
-# Otherwise:                     print Pip, fetch the shingles!
+# Then one if / elif / else chain for what Wren says:
 `,
       tests: PRE + r`for name in ["has_shingles", "has_tar"]:
     check(name in ns, "Create the variable " + name + ".")
@@ -725,8 +722,8 @@ expect_when([('cart = "shingles, nails, rope, cheese sandwich"', 'cart = "tar, r
 expect_when([('cart = "shingles, nails, rope, cheese sandwich"', 'cart = "rope, nails"')], ["Pip, fetch the tar!"], "When both are missing, the elif (tar not in cart) comes first.")
 check(" in cart" in src, "Use in to look inside the cart, like: \"tar\" in cart")`,
       hints: [
-        "`has_tar = \"tar\" in cart` stores True or False.",
-        "Both packed is `has_shingles and has_tar`. The elif can use `\"tar\" not in cart`.",
+        "`in` answers a yes/no question about text: is this little piece anywhere inside that bigger one? Store each answer, then let the if chain read them.",
+        "`has_tar = \"tar\" in cart` stores True or False (same idea for shingles). Both packed is `has_shingles and has_tar`, and the elif asks `\"tar\" not in cart`.",
         "`if has_shingles and has_tar:` / `elif \"tar\" not in cart:` / `else:`, each with its print.",
       ],
       solution: r`cart = "shingles, nails, rope, cheese sandwich"
@@ -808,10 +805,7 @@ if dry:
       starter: r`brake_on = False
 grease = 3      # spoonfuls of grease on the shaft
 
-# If the brake is NOT on:
-#     If grease is 2 or more:   print The shaft turns smoothly.
-#     Otherwise:                print Squeak! Needs more grease.
-# Otherwise (the brake is on):  print The brake is on. Nothing moves.
+# Wren's order: the brake first. The grease only matters once the brake is off.
 `,
       tests: PRE + r`expect_lines(["The shaft turns smoothly."])
 expect_when([("grease = 3", "grease = 1")], ["Squeak! Needs more grease."], "Too little grease should squeak. The inner else belongs to the grease check, so it is indented to line up with the inner if.")
@@ -824,8 +818,8 @@ for line in src.splitlines():
         nested = True
 check(nested, "Put the grease check inside the brake check: an if indented under if not brake_on:")`,
       hints: [
-        "The outer if is `if not brake_on:`. The outer else is lined up with it.",
-        "The inner `if grease >= 2:` and its `else:` are indented 4 spaces; their prints are indented 8.",
+        "Ask the brake question first. The grease question only makes sense when the brake is off, so the whole grease if/else lives *inside* the brake if's block.",
+        "The outer pair is `if not brake_on:` and its `else:`, both at the edge. Inside it, `if grease >= 2:` and its `else:` are indented 4 spaces, and their prints 8.",
         "`if not brake_on:` / `    if grease >= 2:` / `        print(...)` / `    else:` / `        print(...)` / `else:` / `    print(\"The brake is on. Nothing moves.\")`",
       ],
       solution: r`brake_on = False
@@ -882,7 +876,7 @@ else:
       cost: { wood: 6, stone: 0 },
       intro: [
         "The big moment: four lattice sails, dressed in cloth. Wren sews the cloths in **pairs**, so an odd one out means a wobbly sail.",
-        "To test for even, use `%`, the remainder: `cloths % 2 == 0` is True for even numbers.",
+        "To test for even, think about `%`, the remainder: `cloths % 2` is what's left after making pairs.",
         "And a secret: values can stand in for True or False. An empty string `\"\"` and the number `0` count as False; anything else counts as True. That's called **truthiness**.",
       ],
       codex: ["truthiness", "math"],
@@ -906,23 +900,20 @@ else:
 helper = "Pip"    # who holds the ladder ("" means nobody)
 wind = 9          # wind speed (0 means no wind at all)
 
-# 1. If cloths is even:     print The cloths pair up nicely.
-#    Otherwise:             print One cloth is left over.
-# 2. If there is a helper:  print <helper> holds the ladder.
-#    Otherwise:             print Nobody holds the ladder. Wait for help.
-# 3. If there is any wind:  print The sails begin to turn!
-#    Otherwise:             print Not a breath of wind.
+# 1. The cloths
+# 2. The ladder
+# 3. The wind
 `,
       tests: PRE + r`expect_lines(["The cloths pair up nicely.", "Pip holds the ladder.", "The sails begin to turn!"])
-expect_when([("cloths = 6", "cloths = 7")], ["One cloth is left over.", "Pip holds the ladder.", "The sails begin to turn!"], "An even number has remainder 0 when divided by 2: cloths % 2 == 0")
-expect_when([("cloths = 6", "cloths = 4")], ["The cloths pair up nicely.", "Pip holds the ladder.", "The sails begin to turn!"])
-expect_when([('helper = "Pip"', 'helper = "Wren"')], ["The cloths pair up nicely.", "Wren holds the ladder.", "The sails begin to turn!"], "Put the helper's name in with an f-string: f\"{helper} holds the ladder.\"")
+expect_when([("cloths = 6", "cloths = 7")], ["One cloth is left over.", "Pip holds the ladder.", "The sails begin to turn!"], "An even number leaves nothing over when you make pairs: its remainder after dividing by 2 is 0.")
+expect_when([("cloths = 6", "cloths = 4")], ["The cloths pair up nicely.", "Pip holds the ladder.", "The sails begin to turn!"], "4 is even too. Test the remainder instead of a single number.")
+expect_when([('helper = "Pip"', 'helper = "Wren"')], ["The cloths pair up nicely.", "Wren holds the ladder.", "The sails begin to turn!"], "Put the helper's name into the line with an f-string, so it changes when helper does.")
 expect_when([('helper = "Pip"', 'helper = ""')], ["The cloths pair up nicely.", "Nobody holds the ladder. Wait for help.", "The sails begin to turn!"], "An empty name counts as False, so if helper: is all you need.")
 expect_when([("wind = 9", "wind = 0")], ["The cloths pair up nicely.", "Pip holds the ladder.", "Not a breath of wind."], "0 counts as False, so if wind: skips to the else.")
-check("%" in src, "Use % to test for even: cloths % 2 == 0")`,
+check("%" in src, "Use % (the remainder) to test for even.")`,
       hints: [
-        "`cloths % 2` is the remainder after dividing by 2: 0 for even numbers, 1 for odd ones.",
-        "`if helper:` is True for any name and False for `\"\"`. `if wind:` is False only for 0. Don't write `== True`!",
+        "Three separate checks, each an if with an else. Only the first needs maths. The other two can use a value straight as the condition: an empty name and 0 count as False.",
+        "`cloths % 2` is 0 for even numbers and 1 for odd ones, so compare it with 0. `if helper:` is True for any name and False for `\"\"`. `if wind:` is False only for 0. Don't write `== True`!",
         "`if cloths % 2 == 0:` ... `if helper:` with `print(f\"{helper} holds the ladder.\")` ... `if wind:` ... each with an else.",
       ],
       solution: r`cloths = 6
@@ -1007,6 +998,20 @@ print("Pip holds the ladder.")
 if wind:
     print("The sails begin to turn!")
 else:
+    print("Not a breath of wind.")`, r`cloths = 6
+helper = "Pip"
+wind = 9
+if cloths == 6:
+    print("The cloths pair up nicely.")
+else:
+    print("One cloth is left over.")
+if helper:
+    print(f"{helper} holds the ladder.")
+else:
+    print("Nobody holds the ladder. Wait for help.")
+if wind:
+    print("The sails begin to turn!")
+else:
     print("Not a breath of wind.")`],
       done: "Wren: They're turning... they're TURNING! Hear that whistle? That's the sound of a mill that means it.",
     },
@@ -1018,7 +1023,7 @@ else:
       intro: [
         "A mill needs wheat, and wheat needs a field. Wren crumbles a handful of soil and frowns at it like a picky aunt.",
         "Wren: Too dry and the seed blows away. Too wet and it rots. It has to be **between**.",
-        "Python can check a range in one go: `30 <= moisture <= 60`. That's a **chained comparison**.",
+        "Python can check a range in one go, like `1 <= day <= 7`. That's a **chained comparison**: the value sits in the middle, the edges on either side.",
       ],
       codex: ["chained"],
       quiz: {
@@ -1038,27 +1043,25 @@ print(1 < x < 4)`,
       starter: r`moisture = 45      # how damp the soil is, 0 to 100
 temperature = 14   # degrees
 
-# 1. If moisture is from 30 to 60 (both included):  print Perfect for tilling.
-#    Else, if it is below 30:                       print Too dry. Water the rows first.
-#    Otherwise:                                     print Too muddy. Wait a day.
-# 2. good_temp =   (temperature from 8 to 25, both included, as one chained comparison)
+# 1. The soil: one if / elif / else
+# 2. good_temp =
 
 print(f"Good for sowing: {good_temp}")
 `,
       tests: PRE + r`import re
 expect_lines(["Perfect for tilling.", "Good for sowing: True"])
-expect_when([("moisture = 45", "moisture = 30")], ["Perfect for tilling.", "Good for sowing: True"], "30 is included in the range, so use <= on both sides: 30 <= moisture <= 60")
+expect_when([("moisture = 45", "moisture = 30")], ["Perfect for tilling.", "Good for sowing: True"], "30 is included in the range. < leaves the edge out; <= keeps it in.")
 expect_when([("moisture = 45", "moisture = 60")], ["Perfect for tilling.", "Good for sowing: True"], "60 is included in the range too.")
 expect_when([("moisture = 45", "moisture = 29")], ["Too dry. Water the rows first.", "Good for sowing: True"], "Below 30 is too dry.")
-expect_when([("moisture = 45", "moisture = 61")], ["Too muddy. Wait a day.", "Good for sowing: True"], "Above 60 is too muddy. Check the range with both ends: 30 <= moisture <= 60")
-expect_when([("temperature = 14", "temperature = 8")], ["Perfect for tilling.", "Good for sowing: True"], "8 degrees is included: 8 <= temperature <= 25")
+expect_when([("moisture = 45", "moisture = 61")], ["Too muddy. Wait a day.", "Good for sowing: True"], "Above 60 is too muddy. Does your range have both ends, with moisture in the middle?")
+expect_when([("temperature = 14", "temperature = 8")], ["Perfect for tilling.", "Good for sowing: True"], "8 degrees is included in the range.")
 expect_when([("temperature = 14", "temperature = 25")], ["Perfect for tilling.", "Good for sowing: True"], "25 degrees is included.")
 expect_when([("temperature = 14", "temperature = 7")], ["Perfect for tilling.", "Good for sowing: False"], "Work good_temp out with a comparison instead of typing True.")
 expect_when([("temperature = 14", "temperature = 26")], ["Perfect for tilling.", "Good for sowing: False"], "26 degrees is too hot.")
-check(len(re.findall(r"\w\s*<=?\s*\w+\s*<=?\s*\w", src)) >= 2, "Write each range as one chained comparison, like 30 <= moisture <= 60 and 8 <= temperature <= 25.")`,
+check(len(re.findall(r"\w\s*<=?\s*\w+\s*<=?\s*\w", src)) >= 2, "Write each range as one chained comparison: low edge, the variable, high edge, all in one line.")`,
       hints: [
-        "`30 <= moisture <= 60` is True when moisture is anywhere from 30 to 60.",
-        "Check the range first, then `elif moisture < 30:`, then `else:`.",
+        "Picture a number line: too dry on the left, just right in the middle, too muddy on the right. Ask about the middle first, then you only need one more question to tell the two sides apart.",
+        "A chained range is `low <= value <= high`. \"Both included\" means `<=` on both sides. After the range, `elif moisture < 30:` catches the dry side and `else:` the muddy side. good_temp is a range too, stored instead of used in an if.",
         "`if 30 <= moisture <= 60:` ... `elif moisture < 30:` ... `else:` ... and `good_temp = 8 <= temperature <= 25`.",
       ],
       solution: r`moisture = 45
@@ -1166,18 +1169,20 @@ print(f"Average: {average} cm")
 `,
       tests: PRE + r`for name in ["planted", "tallest", "average", "off_by"]:
     check(name in ns, "Create the variable " + name + " before the print lines use it.")
-check(ns["planted"] == 9, "You can only plant as many rows as you have seed bags: planted = min(rows, seed_bags), which is 9, not " + repr(ns["planted"]) + ".")
-check(ns["tallest"] == 14.6, "tallest should be max(north, south, east), which is 14.6, not " + repr(ns["tallest"]) + ".")
-check(ns["average"] == 13.2, "average should be (north + south + east) / 3, rounded to 1 place: 13.2. You have " + repr(ns["average"]) + ". Brackets first, then round(..., 1).")
-check(isinstance(ns["off_by"], (int, float)) and abs(ns["off_by"] - 0.2) < 0.001, "off_by should be round(abs(average - target), 1), which is 0.2, not " + repr(ns["off_by"]) + ".")
+check(ns["planted"] == 9, "12 rows but only 9 seed bags, and one bag sows one row, so planted should be 9, not " + repr(ns["planted"]) + ".")
+check(ns["tallest"] == 14.6, "The tallest of the three heights is 14.6, but tallest is " + repr(ns["tallest"]) + ".")
+check(not (isinstance(ns["average"], float) and abs(ns["average"] - 13.2333) < 0.001), "average is " + repr(ns["average"]) + ". That's the right average, but it still needs rounding to 1 decimal place.")
+check(ns["average"] == 13.2, "The average of the three heights, rounded to 1 place, is 13.2. You have " + repr(ns["average"]) + ". Add all three first (in brackets), then divide.")
+check(isinstance(ns["off_by"], (int, float)) and ns["off_by"] >= 0, "off_by is " + repr(ns["off_by"]) + ". A distance is never negative; there's a built-in that drops the minus sign.")
+check(abs(ns["off_by"] - 0.2) < 0.001, "average is 13.2 and target is 13, so they are 0.2 apart. off_by is " + repr(ns["off_by"]) + ". Did you round it to 1 place?")
 expect_lines(["Rows planted: 9", "Tallest: 14.6 cm", "Average: 13.2 cm", "The wheat is right on time."])
-expect_when([("seed_bags = 9", "seed_bags = 15")], ["Rows planted: 12", "Tallest: 14.6 cm", "Average: 13.2 cm", "The wheat is right on time."], "With 15 bags but only 12 rows, you plant 12. Use min(rows, seed_bags).")
+expect_when([("seed_bags = 9", "seed_bags = 15")], ["Rows planted: 12", "Tallest: 14.6 cm", "Average: 13.2 cm", "The wheat is right on time."], "With 15 bags but only 12 rows, you plant 12: whichever of the two runs out first.")
 expect_when([("north = 14.6", "north = 20.0")], ["Rows planted: 9", "Tallest: 20.0 cm", "Average: 15.0 cm", "The wheat needs more sun."], "Use max() on the three heights instead of typing 14.6.")
 expect_when([("south = 11.2", "south = 8.0")], ["Rows planted: 9", "Tallest: 14.6 cm", "Average: 12.2 cm", "The wheat is right on time."])
 expect_when([("south = 11.2", "south = 5.0")], ["Rows planted: 9", "Tallest: 14.6 cm", "Average: 11.2 cm", "The wheat needs more sun."], "Here average is 1.8 BELOW target, so average - target is -1.8. Wrap it in abs() so the distance is never negative.")`,
       hints: [
-        "`min(rows, seed_bags)` and `max(north, south, east)`. They take as many values as you like.",
-        "Brackets first: `(north + south + east) / 3`. Then `round(that, 1)`. For off_by: `abs(average - target)`, then round it.",
+        "Each line matches one built-in: \"the smaller\" → `min`, \"the biggest\" → `max`, \"never negative\" → `abs`, \"rounded\" → `round`. Work out which goes where.",
+        "`min(rows, seed_bags)` and `max(north, south, east)` take as many values as you like. Average: brackets first, `(north + south + east) / 3`, then `round(..., 1)`. off_by: the difference `average - target`, wrapped in `abs()`, then rounded.",
         "`average = round((north + south + east) / 3, 1)`, `off_by = round(abs(average - target), 1)`, then `if off_by <= 1:` ... `else:` ...",
       ],
       solution: r`rows = 12
@@ -1313,27 +1318,20 @@ bram_wants = 5     # sacks Bram ordered
 price = 3          # coins per sack
 cart_holds = 6     # sacks the cart carries in one trip
 
-# sold  = the smaller of bram_wants and sacks
-# coins = what Bram pays
-# left  = sacks still at the mill
-# word  = "sack" if sold is 1, otherwise "sacks"
+# Work out sold, coins, left and word first.
 
-# Ledger line 1:  Sold 5 sacks to Bram for 15 coins.
-# Ledger line 2:
-#   if nothing is left:          Nothing left. The cart rolls home empty.
-#   elif left fits in the cart:  3 left over. Into the cart they go.
-#   otherwise:                   9 left over. Two cart trips today!
+# Then the two ledger lines.
 `,
       tests: PRE + r`expect_lines(["Sold 5 sacks to Bram for 15 coins.", "3 left over. Into the cart they go."])
 expect_when([("price = 3", "price = 4")], ["Sold 5 sacks to Bram for 20 coins.", "3 left over. Into the cart they go."], "Work out coins from sold and price instead of typing 15.")
 expect_when([("bram_wants = 5", "bram_wants = 1")], ["Sold 1 sack to Bram for 3 coins.", "7 left over. Two cart trips today!"], "One sack is \"1 sack\", not \"1 sacks\". Choose word with an if before printing.")
-expect_when([("bram_wants = 5", "bram_wants = 12")], ["Sold 8 sacks to Bram for 24 coins.", "Nothing left. The cart rolls home empty."], "You can't sell more than you milled: sold = min(bram_wants, sacks). And check for nothing left first.")
+expect_when([("bram_wants = 5", "bram_wants = 12")], ["Sold 8 sacks to Bram for 24 coins.", "Nothing left. The cart rolls home empty."], "You can't sell more than you milled, so sold is whichever is smaller: what Bram wants, or what you have. And with nothing left, the empty-cart line wins, so check that first.")
 expect_when([("bram_wants = 5", "bram_wants = 2")], ["Sold 2 sacks to Bram for 6 coins.", "6 left over. Into the cart they go."], "6 sacks still fit in a cart that holds 6: left <= cart_holds.")
 expect_when([("sacks = 8", "sacks = 20")], ["Sold 5 sacks to Bram for 15 coins.", "15 left over. Two cart trips today!"])`,
       hints: [
-        "`sold = min(bram_wants, sacks)`, `coins = sold * price`, `left = sacks - sold`.",
-        "Set `word = \"sacks\"`, then `if sold == 1: word = \"sack\"`. Then `print(f\"Sold {sold} {word} to Bram for {coins} coins.\")`",
-        "`if left == 0:` empty line, `elif left <= cart_holds:` `print(f\"{left} left over. Into the cart they go.\")`, `else:` the two-trips line.",
+        "Numbers first, then words, then printing. Bram can't buy more sacks than were milled, which is a job for one of the helpers from the wheat field. Pick `word` with an if *before* the f-string uses it.",
+        "`sold = min(bram_wants, sacks)`, `coins = sold * price`, `left = sacks - sold`. For word: `if sold == 1:` → `\"sack\"`, `else:` → `\"sacks\"`. Line 1 is `f\"Sold {sold} {word} to Bram for {coins} coins.\"`",
+        "Line 2: `if left == 0:` the empty-cart line, `elif left <= cart_holds:` `print(f\"{left} left over. Into the cart they go.\")`, `else:` `print(f\"{left} left over. Two cart trips today!\")`. Check for 0 first: 0 also fits in the cart!",
       ],
       solution: r`sacks = 8
 bram_wants = 5
@@ -1472,14 +1470,14 @@ day = 4                # day of the week, 1 to 7
 
 # Write the mill's morning report. The task list has every step.
 `,
-      tests: PRE + r`check("sky" in ns, "Make a variable sky: weather tidied with .strip().lower()")
-check(ns["sky"] == "windy", "sky should be \"windy\", but it is " + repr(ns["sky"]) + ". Use weather.strip().lower()")
+      tests: PRE + r`check("sky" in ns, "Make a variable sky: weather, tidied up.")
+check(ns["sky"] == "windy", "sky should be \"windy\", but it is " + repr(ns["sky"]) + ". Tidy weather the same way you tidied the miller's word at the door.")
 check("milled" in ns, "Make a variable milled: how many sacks were milled today.")
 expect_lines(["Sails: turning", "Milled 11 sacks, 4 left.", "Lanterns: out", "Bread day! Bram gets fresh flour."])
 expect_when([('weather = "  Windy "', 'weather = "STORMY"')], ["Sails: tied down", "Milled 0 sacks, 15 left.", "Lanterns: lit", "Bread day! Bram gets fresh flour."], "In a storm the sails are tied down and nothing is milled, whatever the wind. Compare the tidied sky, not weather.")
 expect_when([('weather = "  Windy "', 'weather = " rainy"')], ["Sails: turning", "Milled 11 sacks, 4 left.", "Lanterns: lit", "Bread day! Bram gets fresh flour."], "Rain lights the lanterns, but the sails still turn.")
 expect_when([("wind = 22", "wind = 50")], ["Sails: tied down", "Milled 0 sacks, 15 left.", "Lanterns: out", "Bread day! Bram gets fresh flour."], "A gale over 40 ties the sails down. Check that before the turning case.")
-expect_when([("grain = 15", "grain = 5")], ["Sails: turning", "Milled 5 sacks, 0 left.", "Lanterns: out", "Bread day! Bram gets fresh flour."], "You can't mill more grain than you have: min(grain, wind // 2).")
+expect_when([("grain = 15", "grain = 5")], ["Sails: turning", "Milled 5 sacks, 0 left.", "Lanterns: out", "Bread day! Bram gets fresh flour."], "You can't mill more grain than you have. Wind 22 could mill 11, but only 5 sacks are waiting, so pick the smaller.")
 expect_when([("wind = 22", "wind = 40")], ["Sails: turning", "Milled 15 sacks, 0 left.", "Lanterns: out", "Bread day! Bram gets fresh flour."], "40 is not over 40, so the sails turn: wind > 40.")
 expect_when([("wind = 22", "wind = 6")], ["Sails: resting", "Milled 0 sacks, 15 left.", "Lanterns: out", "Bread day! Bram gets fresh flour."], "A light breeze means resting sails and nothing milled.")
 expect_when([("wind = 22", "wind = 10")], ["Sails: turning", "Milled 5 sacks, 10 left.", "Lanterns: out", "Bread day! Bram gets fresh flour."], "Wind 10 counts as turning, and mills 10 // 2 = 5 sacks.")
