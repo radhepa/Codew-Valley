@@ -77,7 +77,8 @@ export interface Building {
   id: string;
   name: string;
   blurb: string;
-  villager: Villager;
+  /** Who moves in with this building (none yet for some). */
+  villager?: Villager;
   /** Lines when the chapter begins (after the previous building is finished). */
   opening: string[];
   /** Lines when the last part is built. */

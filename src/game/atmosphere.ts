@@ -178,7 +178,8 @@ export function createMeadow(scene: THREE.Scene, o: MeadowOptions) {
   for (let i = 0; i < normals.count; i++) normals.setXYZ(i, 0, 1, 0);
 
   const grassMat = windMaterial(new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide }), 0.28, uniforms);
-  const COUNT = 42000;
+  // about the same density whatever the valley size (42k blades fit a radius of 30)
+  const COUNT = Math.round(42000 * ((o.radius + 6) / 36) ** 2);
   const grass = new THREE.InstancedMesh(blade, grassMat, COUNT);
   const m = new THREE.Matrix4();
   const q = new THREE.Quaternion();
@@ -214,12 +215,12 @@ export function createMeadow(scene: THREE.Scene, o: MeadowOptions) {
   stem.translate(0, 0.21, 0);
   const headMat = windMaterial(new THREE.MeshLambertMaterial({ color: "#FFFFFF" }), 0.12, uniforms);
   const stemMat = windMaterial(new THREE.MeshLambertMaterial({ color: "#5F7D45" }), 0.12, uniforms);
-  const FLOWERS = 3200;
+  const FLOWERS = Math.round(3200 * (o.radius / 30) ** 2);
   const heads = new THREE.InstancedMesh(head, headMat, FLOWERS);
   const stems = new THREE.InstancedMesh(stem, stemMat, FLOWERS);
   const palette = ["#E9A6BF", "#F2BDD0", "#D98AAB", "#F7DDE6", "#F4F1EA", "#EED98F"];
   let f = 0;
-  for (let p = 0; p < 40 && f < FLOWERS; p++) {
+  for (let p = 0; p < Math.round(40 * (o.radius / 30) ** 2) && f < FLOWERS; p++) {
     const a = rnd() * Math.PI * 2;
     const pr = 5 + rnd() * (o.radius - 4);
     const cx = Math.cos(a) * pr;

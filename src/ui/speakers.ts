@@ -6,7 +6,7 @@ export interface Line {
   text: string;
 }
 
-const MODELS = new Map<string, string>([["Pip", "pip"], ...BUILDINGS.map((b) => [b.villager.name, b.villager.model] as [string, string])]);
+const MODELS = new Map<string, string>([["Pip", "pip"], ...BUILDINGS.flatMap((b) => (b.villager ? [[b.villager.name, b.villager.model] as [string, string]] : []))]);
 
 /** "Wren: Morning!" is Wren's line; anything else is Pip's. */
 export function toLine(s: string): Line {

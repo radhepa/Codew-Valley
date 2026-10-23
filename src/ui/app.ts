@@ -60,7 +60,7 @@ export class App {
 
   /** Villagers who have arrived: at the start of their chapter, or once their building is done. */
   private syncVillagers() {
-    for (const b of BUILDINGS) if (b.villager.arrives === "start" ? this.unlocked(b) : this.finished(b)) void this.world.showVillager(b.id);
+    for (const b of BUILDINGS) if (b.villager && (b.villager.arrives === "start" ? this.unlocked(b) : this.finished(b))) void this.world.showVillager(b.id);
   }
 
   attach(world: World) {
@@ -105,7 +105,7 @@ export class App {
     let sub: string;
     if (!next) {
       goal = `${this.building.name} is open! 🎉`;
-      sub = `Talk to ${this.building.villager.name}. More of the valley is coming soon.`;
+      sub = `${this.building.villager ? `Talk to ${this.building.villager.name}. ` : ""}More of the valley is coming soon.`;
     } else if (!store.canAfford(next.cost)) {
       const need: string[] = [];
       if (d.wood < next.cost.wood) need.push(`${next.cost.wood - d.wood} more wood ${ICON.wood}`);
@@ -429,7 +429,7 @@ export class App {
 
   talkVillager(id: string) {
     const b = BUILDINGS.find((x) => x.id === id);
-    if (!b) return;
+    if (!b?.villager) return;
     const lines = toLines(this.finished(b) ? b.chatAfter : b.chatDuring);
     void this.say(lines.length ? lines : [{ who: b.villager.name, text: "Lovely day for building, isn't it?" }]);
   }

@@ -44,11 +44,13 @@ interface Collider {
   x: number;
   z: number;
   r: number;
+  /** Only solid once this building has its first part. */
+  site?: string;
 }
 
 const NODE_HP = 3;
 const RESPAWN_S = 30;
-const PLAY_RADIUS = 30;
+const PLAY_RADIUS = 46;
 const TAVERN_POS = new THREE.Vector3(0, 0, -7);
 const RUNE_POS = new THREE.Vector3(6.2, 0, -1.6);
 const PIP_POS = new THREE.Vector3(7.4, 0, -0.9);
@@ -58,7 +60,7 @@ const POND = { x: 13, z: 9, r: 4.2 };
 /** Dirt paths (polyline points on the ground). */
 const PATHS: [number, number][][] = [
   [
-    [0, 13],
+    [0, 18],
     [0, 4],
     [0, TAVERN_POS.z + 3.6],
   ],
@@ -74,8 +76,50 @@ const PATHS: [number, number][][] = [
   ],
   [
     [4, 0],
-    [10, -1],
-    [16, -3],
+    [10, -2],
+    [16, -4],
+    [24, -2],
+    [29, -1],
+  ],
+  // bakery and apothecary off the market road
+  [
+    [0, 15],
+    [8, 17],
+    [12.5, 20],
+  ],
+  [
+    [0, 15],
+    [-8, 17],
+    [-14, 17.5],
+  ],
+  // guild hall past the grove, library to the north-west
+  [
+    [-14, 1],
+    [-22, 3],
+    [-29, 10],
+  ],
+  [
+    [-8, -5],
+    [-20, -8],
+    [-28, -9.5],
+  ],
+  // town hall and the clock tower
+  [
+    [7, -2],
+    [8.5, -13],
+    [13, -19],
+  ],
+  [
+    [16, -4],
+    [22, 4],
+    [29, 16.5],
+  ],
+  // up the north hill to the observatory
+  [
+    [-8, -5],
+    [-4.5, -13.5],
+    [-2.5, -26],
+    [0, -30.8],
   ],
   [
     [-1, -2.6],
@@ -100,13 +144,17 @@ interface Site {
   area: Rect;
   /** Solid once the plot exists. */
   solid: Rect;
-  villager: THREE.Vector3;
-  villagerRot: number;
-  /** Lanterns light from this stage on. */
+  villager?: THREE.Vector3;
+  villagerRot?: number;
+  /** Glow materials light from this stage on (the first stage that has any). */
   litAt: number;
+  /** Rough height, for the default build camera. */
+  height: number;
   /** Camera look-at and position for the build cinematic of stage n, relative to pos. */
-  cine(n: number): { look: [number, number, number]; view: [number, number, number] };
+  cine?(n: number): { look: [number, number, number]; view: [number, number, number] };
 }
+
+const site = (x: number, z: number, area: Rect, solid: Rect, height: number, litAt: number): Site => ({ pos: new THREE.Vector3(x, 0, z), area, solid, height, litAt });
 
 const SITES: Record<string, Site> = {
   tavern: {
@@ -116,6 +164,7 @@ const SITES: Record<string, Site> = {
     villager: new THREE.Vector3(2.3, 0, TAVERN_POS.z + 4.8),
     villagerRot: 0.2,
     litAt: 11,
+    height: 8,
     cine: () => ({ look: [0, 2, 0], view: [7, 8, 13] }),
   },
   mill: {
@@ -125,9 +174,27 @@ const SITES: Record<string, Site> = {
     villager: new THREE.Vector3(MILL_POS.x + 2.6, 0, MILL_POS.z + 4),
     villagerRot: -0.5,
     litAt: 14,
+    height: 11,
     cine: (n) => (n >= 11 && n <= 13 ? { look: [-5, 0.8, 0], view: [-1, 9, 15] } : { look: [0, 4.6, 0], view: [9, 10, 26] }),
   },
+  // footprints and glow stages from art/specs/<id>.md
+  dock: site(13, 3, { x: -0.3, z: 2.85, hw: 4.6, hd: 6.9 }, { x: 0, z: -1.5, hw: 2.4, hd: 2.2 }, 6, 12),
+  market: site(0, 24, { x: 0, z: 0.35, hw: 7.8, hd: 7.2 }, { x: 0, z: 0, hw: 0.6, hd: 0.6 }, 4.5, 4),
+  bakery: site(14, 24, { x: 1.05, z: 0, hw: 5.2, hd: 4.1 }, { x: -0.5, z: 0, hw: 3, hd: 2.6 }, 7, 11),
+  forge: site(30, -6, { x: 0, z: 0, hw: 5.5, hd: 4.5 }, { x: 0, z: -0.5, hw: 3.6, hd: 2.6 }, 8, 5),
+  library: site(-30, -15, { x: 0.5, z: 0.5, hw: 6, hd: 5.5 }, { x: 0, z: 0, hw: 3.6, hd: 2.6 }, 10, 3),
+  apothecary: site(-16, 22, { x: -0.5, z: 0.55, hw: 6.5, hd: 5 }, { x: 0.5, z: -0.5, hw: 3.4, hd: 2.6 }, 7.5, 14),
+  townhall: site(14, -25, { x: 0, z: 0, hw: 7.5, hd: 5.5 }, { x: 0, z: -1, hw: 5.4, hd: 3.4 }, 13.6, 14),
+  clocktower: site(31, 13, { x: -1.2, z: 0.2, hw: 4.5, hd: 3.6 }, { x: 0, z: 0, hw: 1.8, hd: 1.8 }, 14.5, 12),
+  guildhall: site(-31, 4, { x: 0, z: 0, hw: 9, hd: 5.5 }, { x: 0, z: -1, hw: 6, hd: 2.6 }, 8.5, 13),
+  observatory: site(0, -37, { x: 0, z: 0.2, hw: 5.9, hd: 6.2 }, { x: 0, z: 0.2, hw: 4.4, hd: 4.4 }, 10.5, 16),
 };
+
+/** A camera that frames the whole building from the front-right. */
+function defaultCine(s: Site) {
+  const d = Math.max(14, Math.max(s.area.hw * 2, s.height * 1.3) * 1.35);
+  return { look: [s.area.x, s.height * 0.4, s.area.z] as [number, number, number], view: [s.area.x + d * 0.3, s.height * 0.4 + d * 0.42, s.area.z + d * 0.9] as [number, number, number] };
+}
 
 /** 1 inside a site's area, fading to 0 four metres out. */
 function siteMask(x: number, z: number) {
@@ -167,6 +234,12 @@ function groundHeight(x: number, z: number) {
   return y;
 }
 
+/** Visible along its whole parent chain. */
+function isShown(o: THREE.Object3D) {
+  for (let p: THREE.Object3D | null = o; p; p = p.parent) if (!p.visible) return false;
+  return true;
+}
+
 /** Turn from angle a toward b the short way round. */
 function lerpAngle(a: number, b: number, t: number) {
   const d = Math.atan2(Math.sin(b - a), Math.cos(b - a));
@@ -192,7 +265,10 @@ export class World {
   private pip!: THREE.Object3D;
   private villagers = new Map<string, THREE.Object3D>();
   private sites = new Map<string, { root: THREE.Object3D; stages: THREE.Object3D[]; shown: number; lights: THREE.PointLight[]; glow: THREE.MeshStandardMaterial[] }>();
-  private sails: THREE.Object3D | null = null;
+  /** Named moving parts from the building specs (sails, clock hands, gears, bellows). */
+  private special = new Map<string, THREE.Object3D>();
+  private flags: { obj: THREE.Object3D; phase: number; base: number }[] = [];
+  private smokers: { obj: THREE.Object3D; timer: number }[] = [];
   private nodes: Node[] = [];
   private npcs: Npc[] = [];
   private colliders: Collider[] = [];
@@ -237,7 +313,7 @@ export class World {
 
   /** progress: parts built per building id. */
   async build(progress: Record<string, number>) {
-    await preload([...BUILDINGS.flatMap((b) => [b.id, b.villager.model]), "tree_oak", "tree_pine", "tree_stump", "rock_large", "rock_small", "bush", "flowers", "grass_tuft", "fence", "log_pile", "stone_pile", "rune_stone", "signpost", "lantern_post", "player", "pip"]);
+    await preload([...BUILDINGS.flatMap((b) => (b.villager ? [b.id, b.villager.model] : [b.id])), "tree_oak", "tree_pine", "tree_stump", "rock_large", "rock_small", "bush", "flowers", "grass_tuft", "fence", "log_pile", "stone_pile", "rune_stone", "signpost", "lantern_post", "player", "pip"]);
     this.tickSky = createSky(this.scene);
     createHills(this.scene);
     this.lights();
@@ -348,15 +424,18 @@ export class World {
         m.material = mt.clone();
         glow.push(m.material as THREE.MeshStandardMaterial);
       }
-      if (/^wheat/i.test(o.name)) this.swaying.push({ obj: o, phase: o.position.x * 1.7 + o.position.z, base: o.rotation.clone() });
-      if (o.name === "sails") this.sails = o;
+      if (/^(wheat|herb|awning|banner|net_|bunting|bucket)/i.test(o.name) || (o.name === "sign" && id !== "tavern"))
+        this.swaying.push({ obj: o, phase: o.position.x * 1.7 + o.position.z, base: o.rotation.clone() });
+      if (/^flag/i.test(o.name)) this.flags.push({ obj: o, phase: o.position.x, base: o.rotation.y });
+      if (o.name === "smoke") this.smokers.push({ obj: o, timer: Math.random() * 0.5 });
+      if (["sails", "hand_hour", "hand_minute", "gear_01", "gear_02", "bellows_lever"].includes(o.name)) this.special.set(o.name, o);
     });
     this.sites.set(id, { root, stages, shown: 0, lights, glow });
     this.showStages(id, stage);
-    // the building plot is solid once building starts
+    // the plot turns solid once building starts (see the movement code)
     const r = site.solid;
     for (let x = -r.hw; x <= r.hw + 0.01; x += 1.2)
-      for (let z = -r.hd; z <= r.hd + 0.01; z += 1.3) this.colliders.push({ x: site.pos.x + r.x + x, z: site.pos.z + r.z + z, r: 0.95 });
+      for (let z = -r.hd; z <= r.hd + 0.01; z += 1.3) this.colliders.push({ x: site.pos.x + r.x + x, z: site.pos.z + r.z + z, r: 0.95, site: id });
   }
 
   private async placeVillage() {
@@ -402,7 +481,7 @@ export class World {
     if (!meshes.length) st.children.forEach((c) => meshes.push(c));
     const base = meshes.map((m) => ({ y: m.position.y, s: m.scale.clone() }));
     meshes.forEach((m) => m.scale.setScalar(0.0001));
-    const { look, view } = site.cine(n);
+    const { look, view } = site.cine?.(n) ?? defaultCine(site);
     const at = site.pos.clone().add(new THREE.Vector3(...look));
     this.building = { meshes, base, t: 0, at };
     this.cinematic = { t: 0, dur: 3.6, look: at, pos: site.pos.clone().add(new THREE.Vector3(...view)) };
@@ -415,13 +494,13 @@ export class World {
     if (this.villagers.has(id)) return;
     const b = BUILDINGS.find((x) => x.id === id);
     const site = SITES[id];
-    if (!b || !site) return;
+    if (!b?.villager || !site?.villager) return;
     const v = await model(b.villager.model);
     if (this.villagers.has(id)) return;
     this.villagers.set(id, v);
     v.position.copy(site.villager);
-    v.rotation.y = site.villagerRot;
-    v.userData.rot = site.villagerRot;
+    v.rotation.y = site.villagerRot ?? 0;
+    v.userData.rot = site.villagerRot ?? 0;
     this.scene.add(v);
     this.npcs.push({ id: `v:${id}`, obj: v, pos: site.villager, radius: 0.5, label: `Talk to ${b.villager.name}` });
     this.colliders.push({ x: site.villager.x, z: site.villager.z, r: 0.4 });
@@ -505,8 +584,8 @@ export class World {
     };
     // a ring of big trees around the valley edge
     let seed = 50;
-    for (let i = 0; i < 70; i++) {
-      const a = (i / 70) * Math.PI * 2 + rnd() * 0.08;
+    for (let i = 0; i < 110; i++) {
+      const a = (i / 110) * Math.PI * 2 + rnd() * 0.05;
       const r = PLAY_RADIUS + 1 + rnd() * 9;
       const x = Math.cos(a) * r;
       const z = Math.sin(a) * r;
@@ -520,7 +599,7 @@ export class World {
       this.addSway(t);
       this.addFade(t);
     }
-    for (let i = 0; i < 30; i++) {
+    for (let i = 0; i < 55; i++) {
       const a = rnd() * Math.PI * 2;
       const r = 6 + rnd() * (PLAY_RADIUS - 8);
       const x = Math.cos(a) * r;
@@ -534,7 +613,7 @@ export class World {
     }
     // scattered props only when real models exist; the meadow covers the rest
     const props = ["grass_tuft", "flowers"].filter((n) => realModels.has(n));
-    for (let i = 0; i < 55 && props.length; i++) {
+    for (let i = 0; i < 120 && props.length; i++) {
       const x = (rnd() - 0.5) * 2 * (PLAY_RADIUS - 2);
       const z = (rnd() - 0.5) * 2 * (PLAY_RADIUS - 2);
       if (Math.hypot(x, z) > PLAY_RADIUS - 2 || !clear(x, z, -0.6)) continue;
@@ -768,6 +847,7 @@ export class World {
     const pr = 0.35;
     for (let iter = 0; iter < 2; iter++) {
       for (const c of this.colliders) {
+        if (c.site && !this.stagesShown(c.site)) continue;
         const dx = p.x - c.x;
         const dz = p.z - c.z;
         const d = Math.hypot(dx, dz);
@@ -888,7 +968,29 @@ export class World {
       }
     }
     // sails turn once they're up
-    if (this.sails && this.stagesShown("mill") >= 10) this.sails.rotation.z -= dt * 0.7;
+    const sp = (n: string) => this.special.get(n);
+    if (sp("sails") && this.stagesShown("mill") >= 10) sp("sails")!.rotation.z -= dt * 0.7;
+    for (const f of this.flags) f.obj.rotation.y = f.base + Math.sin(t * 1.9 + f.phase) * 0.18 + Math.sin(t * 8.3 + f.phase) * 0.04;
+    if (sp("bellows_lever")) sp("bellows_lever")!.rotation.x = Math.sin(t * 2.2) * 0.17;
+    // the clock runs once the tower is finished (it stopped at the Long Quiet)
+    if (sp("hand_hour") && this.stagesShown("clocktower") >= 14) {
+      const d = new Date();
+      const h = d.getHours() % 12 + d.getMinutes() / 60;
+      sp("hand_hour")!.rotation.z = -(h / 12) * Math.PI * 2;
+      sp("hand_minute")!.rotation.z = -((d.getMinutes() + d.getSeconds() / 60) / 60) * Math.PI * 2;
+      if (sp("gear_01")) {
+        sp("gear_01")!.rotation.z -= dt * 0.6;
+        if (sp("gear_02")) sp("gear_02")!.rotation.z = -sp("gear_01")!.rotation.z * 1.6;
+      }
+    }
+    for (const s of this.smokers) {
+      if (!isShown(s.obj)) continue;
+      s.timer -= dt;
+      if (s.timer <= 0) {
+        s.timer = 0.5;
+        this.particles.smoke(s.obj.getWorldPosition(new THREE.Vector3()));
+      }
+    }
     // chimney smoke once the chimney exists
     if (this.stagesShown("tavern") >= 10) {
       this.smokeTimer -= dt;
