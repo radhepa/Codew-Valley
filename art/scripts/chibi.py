@@ -36,11 +36,11 @@ def head(c, cfg):
     R = cfg["head_r"]
     def at(dx, dy, dz):
         return (cx + dx, cy + dy, cz + dz)
-    hp.ball(R, at(0, 0, 0), "skin", scale=(1.06, 0.98, 0.95), uv=(16, 12))
+    hp.ball(R, at(0, 0, 0), "skin", scale=(1.06, 0.98, 0.95), uv=(14, 10))
     fy = -R * 0.98      # front of the face
     # ears
     for s in (-1, 1):
-        hp.ball(0.05, at(s * R * 1.04, 0.01, -0.01), "skin", scale=(0.5, 0.8, 1.0), uv=(8, 5))
+        hp.ball(0.05, at(s * R * 1.04, 0.01, -0.01), "skin", scale=(0.5, 0.8, 1.0), uv=(6, 4))
     # eyes: tall ink ovals with a sparkle
     ex, ez = cfg.get("eye_x", 0.095), cfg.get("eye_z", -0.02)
     for s in (-1, 1):
@@ -58,7 +58,7 @@ def head(c, cfg):
         hp.add(bm_tube(brow, bw * 0.4, 4), cfg["brow_mat"])
     # nose and mouth
     nr = cfg.get("nose_r", 0.03)
-    hp.ball(nr, at(0, fy - nr * 0.2, ez - 0.06), cfg.get("nose_mat", "skin"), uv=(8, 6))
+    hp.ball(nr, at(0, fy - nr * 0.2, ez - 0.06), cfg.get("nose_mat", "skin"), uv=(8, 5))
     if cfg.get("mouth", True):
         mz = ez - 0.115
         mouth = [at(0.028 * math.cos(math.pi + math.pi * k / 4), fy + 0.032 + 0.004 * math.sin(math.pi * k / 4),

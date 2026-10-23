@@ -15,24 +15,31 @@ OUT_MODELS = os.path.join(ROOT, "public", "models")
 OUT_BLEND = os.path.join(ROOT, "art", "blend")
 OUT_PREV = os.path.join(ROOT, "art", "previews")
 
-# ART.md palette, plus a few extras ART.md doesn't cover (marked).
+# ART.md palette, softened toward natural tones after the user's 2026-10-23 direction
+# ("atmospheric and aesthetic like Pokemon Legends: Arceus, not really cartoonish").
+# Same names as ART.md; ART_MD_HEX keeps the original values for reference.
 PALETTE = {
+    "grass": "#8BAE4C", "grass_dark": "#5F8A3E", "grass_light": "#B8CB68", "leaf_deep": "#3E6838",
+    "wood": "#8E6442", "wood_mid": "#6C4B31", "wood_light": "#B08B60", "wood_dark": "#4B3527",
+    "stone": "#A39D93", "stone_mid": "#868077", "stone_light": "#BEB7A9", "stone_dark": "#6A655E",
+    "thatch": "#C9A35A", "thatch_dark": "#A07C3E", "roof": "#9C5440", "roof_dark": "#743F31",
+    "plaster": "#E8DCC3", "plaster_shade": "#D6C4A2",
+    "glow": "#FFC861", "door": "#4A6B56", "cloth": "#B0533F", "pip": "#68B865",
+    # extras (not in ART.md)
+    "roof_mid": "#88493A", "dirt": "#9A7E60", "glass": "#9DB9BE", "iron": "#3E3936", "ink": "#2B2626",
+    "white": "#F4EEE2", "skin": "#EBC3A3", "blush": "#DE9886", "hair": "#5E3A26",
+    "hair_grey": "#ADA49B", "pip_belly": "#EEE2B8", "cap": "#3A4262",
+    "petal_pink": "#D98AAA", "petal_white": "#F3EEE4", "petal_yellow": "#E9C65C",
+    "petal_purple": "#9D8AC9", "tunic": "#465479", "pants": "#5F5446", "scarf": "#B88A3E",
+}
+ART_MD_HEX = {
     "grass": "#7FB24A", "grass_dark": "#5E9A3A", "grass_light": "#A5CC5B", "leaf_deep": "#3F7A34",
     "wood": "#A0673A", "wood_mid": "#7A4A2A", "wood_light": "#C58B52", "wood_dark": "#5A3620",
     "stone": "#A9A39A", "stone_mid": "#8A847C", "stone_light": "#C9C2B6", "stone_dark": "#6E6962",
     "thatch": "#D9A84E", "thatch_dark": "#B9823A", "roof": "#B5523B", "roof_dark": "#8E3E2E",
     "plaster": "#F2E3C6", "plaster_shade": "#E6CFA4",
     "glow": "#FFC861", "door": "#4F7A5A", "cloth": "#C8553D", "pip": "#6CC46A",
-    # extras (not in ART.md)
-    "dirt": "#A58260", "glass": "#A9CDD3", "iron": "#3E3936", "ink": "#2B2626",
-    "white": "#FFFBF2", "skin": "#F3C6A0", "blush": "#EE9C88", "hair": "#6E4026",
-    "hair_grey": "#B9AFA6", "pip_belly": "#F4E6B8", "cap": "#3A4466",
-    "petal_pink": "#F08FAA", "petal_white": "#FFF4E2", "petal_yellow": "#F7D25A",
-    "petal_purple": "#A88ADB", "tunic": "#5D86B5", "pants": "#6B5A4A",
 }
-EXTRAS = {"dirt", "glass", "iron", "ink", "white", "skin", "blush", "hair", "hair_grey",
-          "pip_belly", "cap", "petal_pink", "petal_white", "petal_yellow", "petal_purple",
-          "tunic", "pants"}
 
 
 def srgb_to_lin(c):
@@ -377,7 +384,8 @@ def export(filename, objs=None):
     bpy.ops.export_scene.gltf(filepath=path, export_format="GLB", use_selection=True,
                               export_yup=True, export_apply=True, export_animations=False,
                               export_cameras=False, export_lights=False, export_extras=False,
-                              export_texcoords=False, export_materials="EXPORT")
+                              export_texcoords=False, export_materials="EXPORT",
+                              export_vertex_color="ACTIVE")
     return path
 
 
@@ -388,7 +396,112 @@ def save_blend(name):
     return path
 
 
-# ---------------------------------------------------------------- preview rig
+# ---------------------------------------------------------------- baked ambient occlusion
+
+def bake_ao(objs, samples=40, distance=1.0, floor=0.5, keep=("glow", "glass")):
+    """Bake soft AO into a 'Col' corner colour attribute on each mesh (exported as COLOR_0).
+    Only render-visible objects occlude, so hide what shouldn't count first."""
+    sc = bpy.context.scene
+    engine = sc.render.engine
+    sc.render.engine = "CYCLES"
+    sc.cycles.samples = samples
+    try:
+        sc.cycles.device = "CPU"
+    except Exception:
+        pass
+    sc.world.light_settings.distance = distance
+    meshes = [o for o in objs if o.type == "MESH"]
+    for o in meshes:
+        me = o.data
+        for ca in list(me.color_attributes):
+            me.color_attributes.remove(ca)
+        ca = me.color_attributes.new("Col", "BYTE_COLOR", "CORNER")
+        me.color_attributes.active_color = ca
+        try:
+            me.color_attributes.render_color_index = 0
+        except Exception:
+            pass
+    for o in bpy.data.objects:
+        try:
+            o.select_set(False)
+        except Exception:
+            pass
+    for o in meshes:
+        o.select_set(True)
+    bpy.context.view_layer.objects.active = meshes[0]
+    sc.render.bake.target = "VERTEX_COLORS"
+    sc.render.bake.use_clear = True
+    bpy.ops.object.bake(type="AO")
+    for o in meshes:
+        me = o.data
+        ca = me.color_attributes["Col"]
+        keep_idx = {i for i, m in enumerate(me.materials) if m and m.name in keep}
+        corner_mat = [0] * len(me.loops)
+        for p in me.polygons:
+            for li in p.loop_indices:
+                corner_mat[li] = p.material_index
+        for li, d in enumerate(ca.data):
+            v = 1.0 if corner_mat[li] in keep_idx else floor + (1 - floor) * d.color[0]
+            d.color = (v, v, v, 1.0)
+    sc.render.engine = engine
+
+
+HORIZON = (0.70, 0.77, 0.88, 1.0)   # linear; preview sky horizon = fog colour
+MIDSKY = (0.46, 0.62, 0.88, 1.0)
+ZENITH = (0.22, 0.42, 0.80, 1.0)
+SKY = {"horizon": HORIZON, "mid": MIDSKY, "zenith": ZENITH}
+EVENING = {"horizon": (0.95, 0.62, 0.45, 1.0), "mid": (0.52, 0.42, 0.6, 1.0), "zenith": (0.12, 0.16, 0.36, 1.0)}
+
+
+def add_fog(m, near=22.0, far=150.0):
+    """Blend a material toward the horizon colour with camera distance (preview-only haze)."""
+    nt = m.node_tree
+    out = next((n for n in nt.nodes if n.type == "OUTPUT_MATERIAL"), None)
+    if out is None or not out.inputs["Surface"].is_linked or nt.nodes.get("fog_mix") or m.name.startswith("preview_cloud"):
+        return
+    src = out.inputs["Surface"].links[0].from_socket
+    cam = nt.nodes.new("ShaderNodeCameraData")
+    mr = nt.nodes.new("ShaderNodeMapRange")
+    mr.interpolation_type = "SMOOTHSTEP"
+    mr.inputs["From Min"].default_value = near
+    mr.inputs["From Max"].default_value = far
+    mr.inputs["To Max"].default_value = 0.85
+    em = nt.nodes.new("ShaderNodeEmission")
+    em.inputs["Color"].default_value = SKY["horizon"]
+    mix = nt.nodes.new("ShaderNodeMixShader")
+    mix.name = "fog_mix"
+    nt.links.new(cam.outputs["View Distance"], mr.inputs["Value"])
+    nt.links.new(mr.outputs["Result"], mix.inputs["Fac"])
+    nt.links.new(src, mix.inputs[1])
+    nt.links.new(em.outputs["Emission"], mix.inputs[2])
+    nt.links.new(mix.outputs["Shader"], out.inputs["Surface"])
+
+
+def preview_materials():
+    """For preview renders only (after export): multiply the baked 'Col' attribute into the
+    base colour, and add distance haze."""
+    for m in bpy.data.materials:
+        if not m.node_tree:
+            continue
+        nt = m.node_tree
+        bsdf = nt.nodes.get("Principled BSDF")
+        if bsdf is not None and not m.name.startswith("preview") and not bsdf.inputs["Base Color"].is_linked:
+            attr = nt.nodes.new("ShaderNodeVertexColor")
+            attr.layer_name = "Col"
+            mix = nt.nodes.new("ShaderNodeMix")
+            mix.data_type = "RGBA"
+            mix.blend_type = "MULTIPLY"
+            mix.inputs["Factor"].default_value = 1.0
+            mix.inputs[6].default_value = bsdf.inputs["Base Color"].default_value
+            nt.links.new(attr.outputs["Color"], mix.inputs[7])
+            nt.links.new(mix.outputs[2], bsdf.inputs["Base Color"])
+        add_fog(m)
+
+
+# ---------------------------------------------------------------- preview rig (atmospheric)
+
+SUN_ELEV = 34
+
 
 def setup_render(res=(1280, 960)):
     sc = bpy.context.scene
@@ -398,32 +511,152 @@ def setup_render(res=(1280, 960)):
     sc.render.film_transparent = False
     sc.render.image_settings.file_format = "PNG"
     sc.eevee.taa_render_samples = 48
+    for k, v in (("use_shadows", True), ("use_raytracing", True), ("use_fast_gi", True),
+                 ("volumetric_end", 150.0), ("volumetric_tile_size", "4")):
+        try:
+            setattr(sc.eevee, k, v)
+        except Exception:
+            pass
+    sc.view_settings.view_transform = "AgX"
     try:
-        sc.eevee.use_shadows = True
-        sc.eevee.use_raytracing = True
-        sc.eevee.use_fast_gi = True
+        sc.view_settings.look = "AgX - Punchy"
     except Exception:
         pass
-    sc.view_settings.view_transform = "Standard"   # closest to the sRGB output Three.js shows
-    sc.view_settings.look = "None"
-    sc.view_settings.exposure = 0.0
+    sc.view_settings.exposure = 0.2
+
+
+def world_sky(sun_azim=0, haze=None, sky=None):
+    sc = bpy.context.scene
     w = sc.world or bpy.data.worlds.new("World")
     sc.world = w
     try:
         w.use_nodes = True
     except Exception:
         pass
-    bg = w.node_tree.nodes.get("Background")
-    bg.inputs["Color"].default_value = hex_rgba("#BFD9E8")
-    bg.inputs["Strength"].default_value = 1.1
+    nt = w.node_tree
+    for n in list(nt.nodes):
+        nt.nodes.remove(n)
+    out = nt.nodes.new("ShaderNodeOutputWorld")
+    bg = nt.nodes.new("ShaderNodeBackground")
+    tc = nt.nodes.new("ShaderNodeTexCoord")
+    sep = nt.nodes.new("ShaderNodeSeparateXYZ")
+    mr = nt.nodes.new("ShaderNodeMapRange")
+    mr.inputs["From Min"].default_value = -0.02
+    mr.inputs["From Max"].default_value = 0.45
+    ramp = nt.nodes.new("ShaderNodeValToRGB")
+    sky = sky or SKY
+    SKY.update(sky) if sky is not SKY else None
+    el = ramp.color_ramp.elements
+    el[0].position, el[0].color = 0.0, sky["horizon"]
+    el[1].position, el[1].color = 1.0, sky["zenith"]
+    mid = el.new(0.18)
+    mid.color = sky["mid"]
+    nt.links.new(tc.outputs["Generated"], sep.inputs[0])
+    nt.links.new(sep.outputs["Z"], mr.inputs["Value"])
+    nt.links.new(mr.outputs["Result"], ramp.inputs["Fac"])
+    nt.links.new(ramp.outputs["Color"], bg.inputs["Color"])
+    bg.inputs["Strength"].default_value = 1.3
+    nt.links.new(bg.outputs["Background"], out.inputs["Surface"])
+
+
+def hills(seed=5):
+    """Preview-only distant hills that fade into the haze."""
+    rnd = random.Random(seed)
+    p = Part("preview_hills")
+    for i in range(44):
+        a = 2 * math.pi * i / 44 + rnd.uniform(-0.05, 0.05)
+        d = rnd.uniform(80, 120)
+        r = rnd.uniform(14, 28)
+        p.add(jitter(bm_ico(1.0, 2), 0.08, i), rnd.choice(["grass_dark", "leaf_deep", "grass", "grass_dark"]),
+              M((d * math.cos(a), d * math.sin(a), -r * 0.55), (0, 0, rnd.uniform(0, 90)),
+                (r * 1.7, r, r * rnd.uniform(0.6, 1.0))), smooth=True)
+    ob = p.to_object(coll("PREVIEW"))
+    ca = ob.data.color_attributes.new("Col", "BYTE_COLOR", "POINT")
+    for v, d in zip(ob.data.vertices, ca.data):
+        k = 0.75 + 0.25 * min(max(v.co.z / 12.0, 0.0), 1.0)
+        d.color = (k, k, k, 1.0)
+    return ob
+
+
+def meadow(radius, seed=3, fine=False):
+    """Preview-only ground: a big meadow with painterly colour patches (vertex colours)."""
+    rnd = random.Random(seed)
+    bm = bmesh.new()
+    step = 0.45 if fine else 1.0
+    n = int(radius * 2 / step)
+    bmesh.ops.create_grid(bm, x_segments=n, y_segments=n, size=radius)
+    me = bpy.data.meshes.new("preview_ground")
+    bm.to_mesh(me)
+    bm.free()
+    ca = me.color_attributes.new("Col", "BYTE_COLOR", "POINT")
+    scale = 0.3 if fine else 1.0
+    cols = [hex_rgba(PALETTE[k]) for k in ("grass_light", "grass_dark", "grass_light", "leaf_deep")]
+    blobs = [(rnd.uniform(-radius, radius), rnd.uniform(-radius, radius), rnd.uniform(2, 7) * scale, rnd.choice(cols),
+              rnd.uniform(0.3, 0.6)) for _ in range(int(radius * 2.5))]
+    base = hex_rgba(PALETTE["grass"])
+    for v, d in zip(me.vertices, ca.data):
+        x, y = v.co.x, v.co.y
+        c = list(base[:3])
+        for bx, by, br, bc, strength in blobs:
+            dd = math.hypot(x - bx, y - by) / br
+            if dd < 1:
+                f = (1 - dd) ** 2 * strength
+                c = [c[i] * (1 - f) + bc[i] * f for i in range(3)]
+        d.color = (c[0], c[1], c[2], 1)
+    m = bpy.data.materials.get("preview_ground") or bpy.data.materials.new("preview_ground")
+    try:
+        m.use_nodes = True
+    except Exception:
+        pass
+    nt = m.node_tree
+    bsdf = nt.nodes.get("Principled BSDF")
+    if not bsdf.inputs["Base Color"].is_linked:
+        attr = nt.nodes.new("ShaderNodeVertexColor")
+        attr.layer_name = "Col"
+        nt.links.new(attr.outputs["Color"], bsdf.inputs["Base Color"])
+    bsdf.inputs["Roughness"].default_value = 0.95
+    bsdf.inputs["Specular IOR Level"].default_value = 0.1
+    me.materials.append(m)
+    ob = bpy.data.objects.new("preview_ground", me)
+    coll("PREVIEW").objects.link(ob)
+    return ob
+
+
+def clouds(seed=8, n=9):
+    """Preview-only soft cloud banks far away (unfogged, softly self-lit)."""
+    rnd = random.Random(seed)
+    m = bpy.data.materials.get("preview_cloud") or bpy.data.materials.new("preview_cloud")
+    try:
+        m.use_nodes = True
+    except Exception:
+        pass
+    b = m.node_tree.nodes.get("Principled BSDF")
+    b.inputs["Base Color"].default_value = (1.0, 0.98, 0.95, 1)
+    b.inputs["Roughness"].default_value = 1.0
+    b.inputs["Emission Color"].default_value = (0.85, 0.88, 0.95, 1)
+    b.inputs["Emission Strength"].default_value = 0.55
+    p = Part("preview_clouds")
+    for i in range(n):
+        a = math.radians(rnd.uniform(20, 160))
+        d = rnd.uniform(220, 300)
+        cx, cy, cz = d * math.cos(a), d * math.sin(a), rnd.uniform(45, 85)
+        w = rnd.uniform(25, 45)
+        for k in range(rnd.randint(4, 7)):
+            r = w * rnd.uniform(0.25, 0.42)
+            p.add(bm_ico(r, 3), "white", M((cx + rnd.uniform(-w, w) * 0.7, cy + rnd.uniform(-6, 6), cz + rnd.uniform(-2, 6)),
+                                            scale=(1.4, 1.0, 0.6)), smooth=True)
+    ob = p.to_object(coll("PREVIEW"))
+    ob.data.materials[0] = m
+    return ob
 
 
 def preview_rig(targets, ground_r=None, azim=-32, elev=24, lens=50, margin=1.08, ground=True,
-                ground_mat="grass", look_z_bias=0.0, sun_azim=35, min_radius=0.0):
-    """Camera + sun + grass disc framed on `targets`. Returns the camera."""
+                ground_mat="grass", look_z_bias=0.0, sun_azim=35, min_radius=0.0, haze=0.004):
+    """Camera + warm sun + sky + meadow framed on `targets`. Returns the camera."""
     pc = coll("PREVIEW")
     for o in list(pc.objects):
-        bpy.data.objects.remove(o, do_unlink=True)
+        if o.name not in ("preview_ground", "preview_hills", "preview_clouds"):
+            bpy.data.objects.remove(o, do_unlink=True)
     pts = []
     for o in targets:
         if o.type == "MESH":
@@ -433,17 +666,16 @@ def preview_rig(targets, ground_r=None, azim=-32, elev=24, lens=50, margin=1.08,
     centre = (lo + hi) / 2
     centre.z += look_z_bias
     radius = max((hi - lo).length / 2, min_radius)
-    if ground:
-        gr = ground_r or radius * 2.2
-        p = Part("preview_ground")
-        p.add(bm_cyl(gr, gr, 0.05, 48), ground_mat, M((0, 0, -0.05)))
-        p.to_object(pc)
+    if ground and "preview_ground" not in pc.objects:
+        meadow(70) if radius > 1.5 else meadow(40, fine=True)
+        hills()
+        clouds()
+    world_sky(sun_azim)
     cam_d = bpy.data.cameras.new("preview_cam")
     cam_d.lens = lens
     cam = bpy.data.objects.new("preview_cam", cam_d)
     pc.objects.link(cam)
-    sensor = cam_d.sensor_width
-    fov = 2 * math.atan(sensor / 2 / lens)
+    fov = 2 * math.atan(cam_d.sensor_width / 2 / lens)
     sc = bpy.context.scene
     aspect = sc.render.resolution_y / sc.render.resolution_x
     fov_min = 2 * math.atan(math.tan(fov / 2) * min(1.0, aspect))
@@ -452,14 +684,15 @@ def preview_rig(targets, ground_r=None, azim=-32, elev=24, lens=50, margin=1.08,
     direction = Vector((math.sin(a) * math.cos(e), -math.cos(a) * math.cos(e), math.sin(e)))
     cam.location = centre + direction * dist
     cam.rotation_euler = (-direction).to_track_quat("-Z", "Y").to_euler()
-    cam_d.clip_end = dist * 4
+    cam_d.clip_start = 0.05
+    cam_d.clip_end = 500
     sc.camera = cam
     sun_d = bpy.data.lights.new("preview_sun", "SUN")
-    sun_d.energy = 3.2
-    sun_d.color = (1.0, 0.94, 0.84)
-    sun_d.angle = math.radians(4)
+    sun_d.energy = 5.0
+    sun_d.color = (1.0, 0.88, 0.72)
+    sun_d.angle = math.radians(3)
     sun = bpy.data.objects.new("preview_sun", sun_d)
-    sun.rotation_euler = (math.radians(48), 0, math.radians(sun_azim))
+    sun.rotation_euler = (math.radians(90 - SUN_ELEV), 0, math.radians(sun_azim))
     pc.objects.link(sun)
     return cam
 
@@ -469,3 +702,32 @@ def render(path):
     bpy.context.scene.render.filepath = path
     bpy.ops.render.render(write_still=True)
     return path
+
+
+def height_tint(ob, z0, z1, low=0.72, high=1.0):
+    """Multiply the baked 'Col' by a bottom-to-top gradient (darker underside, sunlit top)."""
+    me = ob.data
+    ca = me.color_attributes.get("Col")
+    mw = ob.matrix_world
+    for li, d in enumerate(ca.data):
+        z = (mw @ me.vertices[me.loops[li].vertex_index].co).z
+        t = min(max((z - z0) / max(z1 - z0, 1e-6), 0.0), 1.0)
+        k = low + (high - low) * t
+        c = d.color
+        d.color = (c[0] * k, c[1] * k, c[2] * k, 1.0)
+
+
+def finish(name, objs, tint=None, res=(1000, 1000), **rig):
+    """Standard pipeline for a single model: bake AO, export .glb, render preview, save .blend.
+    `tint(objs)` runs after the bake (for gradients). Returns triangle counts."""
+    bpy.context.view_layer.update()     # children need fresh world matrices for framing
+    setup_render(res)
+    preview_rig(objs, **rig)
+    bake_ao(objs)
+    if tint:
+        tint(objs)
+    export(name + ".glb", objs)
+    preview_materials()
+    render(os.path.join(OUT_PREV, name + ".png"))
+    save_blend(name)
+    return {"tris": tris(objs)}

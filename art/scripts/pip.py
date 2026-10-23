@@ -161,14 +161,9 @@ def build():
 
 def main():
     objs = build()
-    tris = {o.name: common.tris([o]) for o in objs}
-    common.export("pip.glb")
-    common.setup_render((1000, 1000))
-    common.preview_rig(objs, ground_r=0.9, azim=-28, elev=14, lens=60, margin=1.25, sun_azim=30)
-    common.render(os.path.join(common.OUT_PREV, "pip.png"))
-    common.save_blend("pip")
-    return {"tris": tris, "total": sum(tris.values()),
-            "height": max((o.matrix_world @ __import__("mathutils").Vector(c)).z for o in objs for c in o.bound_box)}
+    r = common.finish("pip", objs, azim=-28, elev=12, lens=60, margin=1.25, sun_azim=30)
+    r["parts"] = {o.name: common.tris([o]) for o in objs}
+    return r
 
 
 if __name__ == "__main__" or globals().get("RUN_MAIN"):

@@ -365,7 +365,7 @@ def stage_09(p, rnd):
     eave_z = PLATE[1] - EAVE_OVH * slope
     L = math.hypot(eave_y, RIDGE_Z - eave_z)
     xh = WX + PH + GABLE_OVH
-    tile_cols = ["roof"] * 6 + ["cloth"] * 2 + ["roof_dark"] * 2
+    tile_cols = ["roof"] * 6 + ["roof_mid"] * 3 + ["roof_dark"]
     for s in (-1, 1):   # -1 front slope, +1 back slope
         rot = (math.degrees(th) * -s, 0, 0)
         d = Vector((0, -s * math.cos(th), math.sin(th)))
@@ -585,22 +585,29 @@ def build():
 
 
 def main():
-    import bpy
     stage_objs = build()
     meshes = [ob for _, ob in stage_objs]
     counts = {n.name: common.tris([o]) for n, o in stage_objs}
-    common.export("tavern.glb")
     common.setup_render()
-    out = {}
+    common.preview_rig(meshes, azim=-30, elev=22, lens=50, margin=0.86)   # meadow occludes the bake
+    # bake each stage's AO with only the stages that exist when it first appears
+    for k in range(1, 13):
+        for i, (n, o) in enumerate(stage_objs, 1):
+            o.hide_render = i > k
+        common.bake_ao([stage_objs[k - 1][1]])
+    for n, o in stage_objs:
+        o.hide_render = False
+    common.export("tavern.glb")
+    common.preview_materials()
     if RENDER_STAGES:
         for k in range(1, 13):
             for i, (n, o) in enumerate(stage_objs, 1):
                 o.hide_render = i > k
-            common.preview_rig(meshes[:k], ground_r=11, azim=-30, elev=24, lens=50, margin=0.86, min_radius=6.4)
-            out[k] = common.render(os.path.join(common.OUT_PREV, "tavern_stage_%02d.png" % k))
+            common.preview_rig(meshes[:k], azim=-30, elev=24, lens=50, margin=0.86, min_radius=6.4)
+            common.render(os.path.join(common.OUT_PREV, "tavern_stage_%02d.png" % k))
     for n, o in stage_objs:
         o.hide_render = False
-    common.preview_rig(meshes, ground_r=11, azim=-30, elev=22, lens=50, margin=0.86)
+    common.preview_rig(meshes, azim=-30, elev=13, lens=40, margin=0.95)
     common.render(os.path.join(common.OUT_PREV, "tavern.png"))
     common.save_blend("tavern")
     return {"tris": counts, "total": sum(counts.values())}

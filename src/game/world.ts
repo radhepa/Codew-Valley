@@ -275,6 +275,7 @@ export class World {
     const rune = await model("rune_stone");
     rune.position.copy(RUNE_POS);
     rune.rotation.y = -0.5;
+    rune.scale.setScalar(1.35);
     this.scene.add(rune);
     this.npcs.push({ id: "rune", obj: rune, pos: RUNE_POS, radius: 0.8, label: "Use the rune stone" });
     this.colliders.push({ x: RUNE_POS.x, z: RUNE_POS.z, r: 0.75 });
