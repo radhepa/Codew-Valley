@@ -5,6 +5,7 @@ import { loadPyodide } from "pyodide";
 import { HELPER } from "../src/python/helper.ts";
 import { CODEX, codexById } from "../src/content/codex.ts";
 import { BUILDINGS } from "../src/content/index.ts";
+import { PEOPLE, personById } from "../src/content/people/index.ts";
 
 const py = await loadPyodide();
 let out = "";
@@ -79,8 +80,29 @@ for (const building of BUILDINGS) {
   }
 }
 
+// Villagers: every profile is complete, and every building's villager has one.
+const questionIds = new Set();
+for (const p of PEOPLE) {
+  const where = `people/${p.id}`;
+  count++;
+  if (p.talk.length !== 4 || p.talk.some((t) => t.length < 3)) fail(where, "needs 4 talk tiers with at least 3 lines each");
+  if (p.milestones.length !== 5) fail(where, "needs 5 milestones (2, 4, 6, 8, 10 hearts)");
+  if (!p.rain.length || !p.evening.length) fail(where, "needs rain and evening lines");
+  if (p.home && !BUILDINGS.some((b) => b.id === p.home)) fail(where, `home "${p.home}" is not a building`);
+  const lines = [...p.talk.flat(), ...p.rain, ...p.evening, ...p.milestones, ...p.questions.flatMap((q) => [q.ask, ...q.choices.map((c) => c.reply)])];
+  if (lines.some((l) => !l.trim())) fail(where, "has an empty line");
+  if (lines.some((l) => l.startsWith(p.name + ":"))) fail(where, "lines are in their own voice; drop the 'Name:' prefix");
+  for (const q of p.questions) {
+    if (questionIds.has(q.id)) fail(where, `duplicate question id ${q.id}`);
+    questionIds.add(q.id);
+    if (q.choices.length < 2 || q.choices.length > 3) fail(where, `${q.id} needs 2 or 3 choices`);
+    if (q.choices.some((c) => c.points < 0 || c.points > 60)) fail(where, `${q.id} points should be 0 to 60`);
+  }
+}
+for (const b of BUILDINGS) if (b.villager && !personById.has(b.villager.model)) fail(`buildings/${b.id}`, `no profile in src/content/people for ${b.villager.model}`);
+
 if (failures.length) {
   console.error(`✗ ${failures.length} of ${count} content checks failed:\n` + failures.map((f) => "  - " + f).join("\n"));
   process.exit(1);
 }
-console.log(`✓ all ${count} content checks passed (${CODEX.length} codex pages, ${ids.size} challenges)`);
+console.log(`✓ all ${count} content checks passed (${CODEX.length} codex pages, ${ids.size} challenges, ${PEOPLE.length} villagers)`);

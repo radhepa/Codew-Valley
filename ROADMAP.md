@@ -10,7 +10,9 @@
    villager, gifts and daily chats, and heart scenes built on each
    villager's personal want (`STORY.md`, writing rules). Some heart events
    are small optional Python puzzles (help Odo sort his books, fix Tock's
-   gadget).
+   gadget). **Started:** hearts, daily chats, questions, personalities and
+   the Friends journal are in; the heart events themselves are planned in
+   `HEARTS.md`.
 3. **Atmosphere and animation.** Day/night (the Clock Tower story beat
    turns it on), weather, villagers walking daily routines, idle and emote
    animations, ambient sound and music, more life in the valley.

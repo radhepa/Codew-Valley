@@ -13,6 +13,10 @@ import { portrait } from "./portrait.ts";
 import { modelOf, nameTag, toLine, toLines, type Line } from "./speakers.ts";
 import { workbench } from "./workbench.ts";
 import { installUiSounds, soundButton } from "./sound-panel.ts";
+import { personById } from "../content/people/index.ts";
+import type { Person } from "../content/types.ts";
+import { answer, befriend, bond, chat, GAIN, hearts, meet, type Gain } from "../friends.ts";
+import { friendsBook, heartRow } from "./friendsbook.ts";
 
 const ICON: Record<Resource, string> = { wood: icon("wood"), stone: icon("stone") };
 const ROMAN = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X", "XI", "XII"];
@@ -65,7 +69,12 @@ export class App {
 
   /** Villagers who have arrived: at the start of their chapter, or once their building is done. */
   private syncVillagers() {
-    for (const b of BUILDINGS) if (b.villager && (b.villager.arrives === "start" ? this.unlocked(b) : this.finished(b))) void this.world.showVillager(b.id);
+    if (store.data.introSeen) meet("pip");
+    for (const b of BUILDINGS)
+      if (b.villager && (b.villager.arrives === "start" ? this.unlocked(b) : this.finished(b))) {
+        meet(b.villager.model);
+        void this.world.showVillager(b.id);
+      }
   }
 
   attach(world: World) {
@@ -77,10 +86,12 @@ export class App {
       res.append(r);
     }
     const buttons = el(`<div class="hud-buttons">
+      <button class="plate icon-btn friends-btn" title="Friends (F)" aria-label="Open your friends journal">${icon("people")}</button>
       <button class="plate icon-btn codex-btn" title="The Codex (C)" aria-label="Open the Codex">${icon("book")}</button>
       <button class="plate icon-btn mute-btn" title="Sound on/off (M)" aria-label="Toggle sound">${icon("sound")}</button>
     </div>`);
     buttons.querySelector(".codex-btn")!.addEventListener("click", () => this.openCodex());
+    buttons.querySelector(".friends-btn")!.addEventListener("click", () => this.openFriends());
     const mute = buttons.querySelector<HTMLButtonElement>(".mute-btn")!;
     soundButton(mute, this.ui);
     installUiSounds(this.ui);
@@ -95,6 +106,7 @@ export class App {
         if (this.modal) this.closeModal();
         else if (this.dialogEl) this.closeDialog();
       } else if (e.key.toLowerCase() === "c" && !this.modal && !this.dialogEl && !this.world.paused) this.openCodex();
+      else if (e.key.toLowerCase() === "f" && !this.modal && !this.dialogEl && !this.world.paused) this.openFriends();
       else if (e.key.toLowerCase() === "m") sfx.toggleMute();
     });
   }
@@ -154,6 +166,16 @@ export class App {
     if (next && store.canAfford(next.cost) && store.data[kind] === next.cost[kind] && next.cost[kind] > 0) this.toast(`Enough materials for the ${next.part.toLowerCase()}! Head to the rune stone.`);
   }
 
+  /** A heart toast when a friendship grows a heart. */
+  private heartToast(g: Gain | null) {
+    if (!g || g.after <= g.before) return;
+    this.ui.querySelector(".toast")?.remove();
+    const t = el(`<div class="plate toast heart-toast" role="status">${icon("heart", "full")}<span><b>${esc(g.person.name)}</b> · ${g.after} ${g.after === 1 ? "heart" : "hearts"}</span></div>`);
+    this.ui.append(t);
+    clearTimeout(this.toastTimer);
+    this.toastTimer = window.setTimeout(() => t.remove(), 3600);
+  }
+
   toast(text: string) {
     this.ui.querySelector(".toast")?.remove();
     const t = el(`<div class="plate toast" role="status">${icon("spark")}<span>${md(text)}</span></div>`);
@@ -190,7 +212,8 @@ export class App {
       const step = () => {
         const line = lines[i];
         void portrait(modelOf(line.who)).then((u) => (img.src = u));
-        who.textContent = nameTag(line.who);
+        const person = personById.get(modelOf(line.who));
+        who.innerHTML = `${esc(nameTag(line.who))}${person && bond(person.id).met ? heartRow(hearts(person.id), "mini") : ""}`;
         full = line.text;
         // type the plain text, then swap in the formatted version
         const plain = full.replace(/\*\*|`/g, "");
@@ -382,8 +405,12 @@ export class App {
     this.world.paused = true;
     this.world.buildStage(b.id, stage);
     music.sting(this.finished(b) ? "finish" : "stage");
+    const gains = [befriend("pip", GAIN.pipPart)];
+    if (b.villager) gains.push(befriend(b.villager.model, GAIN.part + (this.finished(b) ? GAIN.finished : 0)));
     await new Promise((r) => setTimeout(r, 3300));
     const lines: Line[] = [toLine(c.done)];
+    for (const g of gains) if (g) lines.push(...g.milestones.map((text) => ({ who: g.person.name, text })));
+    gains.forEach((g) => this.heartToast(g));
     if (this.finished(b)) {
       this.syncVillagers();
       lines.push(...toLines(b.finale));
@@ -418,14 +445,46 @@ export class App {
 
   // ---- characters -------------------------------------------------------------
 
+  openFriends() {
+    this.openModal(friendsBook(() => this.closeModal()));
+  }
+
+  /**
+   * Talk to someone: `before` (Pip's guidance, say) comes first, then a line
+   * from their personality and, on the first chat of the day, maybe a question.
+   */
+  private async converse(p: Person, before: Line[] = [], extra: string[] = []) {
+    meet(p.id);
+    const c = chat(p, extra);
+    const lines = [...before, ...c.lines.map((text) => ({ who: p.name, text }))];
+    const talk = c.firstToday ? befriend(p.id, GAIN.talk) : null;
+    if (talk) lines.push(...talk.milestones.map((text) => ({ who: p.name, text })));
+    const q = c.question;
+    if (!q) {
+      await this.say(lines);
+      this.heartToast(talk);
+      return;
+    }
+    lines.push({ who: p.name, text: q.ask });
+    await this.say(
+      lines,
+      q.choices.map((ch, i) => ({
+        label: ch.label,
+        cls: "line",
+        action: () => {
+          const g = answer(p, q, i);
+          void this.say([{ who: p.name, text: ch.reply }, ...(g?.milestones ?? []).map((text) => ({ who: p.name, text }))]).then(() => this.heartToast(g && g.after > g.before ? g : talk));
+        },
+      })),
+    );
+  }
+
   talkPip() {
     const next = this.nextChallenge();
     const d = store.data;
+    const pip = personById.get("pip")!;
     if (!next) {
-      void this.say([
-        { who: "Pip", text: `We did it! ${this.building.name} is finished, and your Python grows stronger every day.` },
-        { who: "Pip", text: "There's so much more of the valley to build. For now, rest your fingers. And maybe reread the Codex with a mug of cider." },
-      ]);
+      void this.converse(pip, [{ who: "Pip", text: `We did it! ${this.building.name} is finished, and your Python grows stronger every day.` }]);
       return;
     }
     const lines: Line[] = [];
@@ -438,15 +497,21 @@ export class App {
     } else {
       lines.push({ who: "Pip", text: `We have everything for the ${next.part.toLowerCase()}. Speak to the rune stone right behind me!` });
     }
-    lines.push({ who: "Pip", text: pipTips[(d.done.length + d.wood) % pipTips.length] });
-    void this.say(lines);
+    if (bond("pip").heard % 3 === 2) lines.push({ who: "Pip", text: pipTips[(d.done.length + d.wood) % pipTips.length] });
+    void this.converse(pip, lines);
   }
 
   talkVillager(id: string) {
     const b = BUILDINGS.find((x) => x.id === id);
     if (!b?.villager) return;
-    const lines = toLines(this.finished(b) ? b.chatAfter : b.chatDuring);
-    void this.say(lines.length ? lines : [{ who: b.villager.name, text: "Lovely day for building, isn't it?" }]);
+    const v = b.villager;
+    // chapter lines from the building mix in with their everyday ones
+    const extra = toLines(this.finished(b) ? b.chatAfter : b.chatDuring)
+      .filter((l) => l.who === v.name)
+      .map((l) => l.text);
+    const p = personById.get(v.model);
+    if (p) void this.converse(p, [], extra);
+    else void this.say(extra.length ? extra.map((text) => ({ who: v.name, text })) : [{ who: v.name, text: "Lovely day for building, isn't it?" }]);
   }
 
   // ---- start ------------------------------------------------------------------
@@ -500,6 +565,7 @@ export class App {
       { who: "Pip", text: "When you have enough, come back to the rune stone. And don't worry: I'll teach you every word of Python you need. Everything's in the **Codex** (press **C**)." },
     ]);
     store.data.introSeen = true;
+    meet("pip");
     store.changed();
   }
 }

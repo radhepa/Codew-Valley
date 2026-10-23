@@ -17,9 +17,24 @@ export interface SaveData {
   introSeen: boolean;
   /** Buildings whose chapter opening has been shown. */
   opened: string[];
+  /** Friendship with each villager, by person id (see friends.ts). */
+  friends: Record<string, Bond>;
 }
 
-const fresh = (): SaveData => ({ wood: 0, stone: 0, done: [], drafts: {}, hints: {}, quiz: {}, introSeen: false, opened: [] });
+export interface Bond {
+  points: number;
+  met: boolean;
+  /** Local date (yyyy-mm-dd) of the last chat; the first chat each day earns points. */
+  talkedOn: string;
+  /** Question ids already asked. */
+  asked: string[];
+  /** Milestone lines already said (one each at 2, 4, 6, 8 and 10 hearts). */
+  milestones: number;
+  /** How many lines they've said, to cycle through them. */
+  heard: number;
+}
+
+const fresh = (): SaveData => ({ wood: 0, stone: 0, done: [], drafts: {}, hints: {}, quiz: {}, introSeen: false, opened: [], friends: {} });
 
 function load(): SaveData {
   try {

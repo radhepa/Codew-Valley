@@ -73,6 +73,47 @@ export interface Villager {
   arrives: "start" | "end";
 }
 
+/** A one-time question a villager asks; how you answer moves your friendship. */
+export interface Question {
+  id: string;
+  /** Asked only once you have at least this many hearts with them. */
+  minHearts: number;
+  ask: string;
+  choices: { label: string; reply: string; points: number }[];
+}
+
+/**
+ * Who a villager is: personality, how they talk at each friendship tier, and
+ * the questions they ask. Lines are in their own voice (no "Name:" prefix).
+ */
+export interface Person {
+  /** Model id, also the key in the save (e.g. "innkeeper"). */
+  id: string;
+  name: string;
+  /** "Innkeeper of the Sleepy Serpent" */
+  title: string;
+  /** Building they move in with; none for Pip. */
+  home?: string;
+  /** Three or four short traits for the Friends journal. */
+  traits: string[];
+  /** How they talk, for writers. Not shown in the game. */
+  voice: string;
+  /** Revealed in the journal at 2 hearts (and the base for gifts later). */
+  likes: string[];
+  /** Revealed at 4 hearts. */
+  dislikes: string[];
+  /** Their personal want, revealed at 6 hearts; heart events grow from it. */
+  want: string;
+  /** Everyday lines by friendship tier: 0–1 hearts, 2–4, 5–7, 8–10. */
+  talk: [string[], string[], string[], string[]];
+  /** Lines for rainy weather and for evening, mixed in when they fit. */
+  rain: string[];
+  evening: string[];
+  questions: Question[];
+  /** Said once on reaching 2, 4, 6, 8 and 10 hearts (until heart events exist). */
+  milestones: [string, string, string, string, string];
+}
+
 export interface Building {
   id: string;
   name: string;
