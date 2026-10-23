@@ -60,9 +60,13 @@ window.__pv = {
   build(n: number, id = app.building.id) {
     world.buildStage(id, n);
   },
+  /** Animations (game/anim.ts): anim("chop"), anim("wave", "tavern"), anim("happy", "all"); "big" celebrates a finished building. */
+  anim: (name: Parameters<World["playAnim"]>[0], who = "player", big = false) => world.playAnim(name, who, big),
+  /** Every character in a row in front of the player, to try the animations on: then anim("talk", "smith"). */
+  lineup: () => world.animLineup(),
+  /** What the sound is doing: music scene and piece, nature levels, the recent sound log. */
+  audio: () => ({ ...soundscape.state, musicScene: music.scene, playing: music.playing, settings: soundSettings, log: soundLog.slice(-25) }),
   /** Force the weather ("clear", "drizzle", "rain", "storm", "rainbow"); time(0.5) is noon, hold = stop the clock. */
   weather: (kind: Parameters<World["weather"]["force"]>[0], now = false) => world.weather.force(kind, now),
   time: (tod: number, hold = false) => (world.weather.setTime(tod), (world.weather.hold = hold)),
-  /** What the sound is doing: music scene and piece, nature levels, the recent sound log. */
-  audio: () => ({ ...soundscape.state, musicScene: music.scene, playing: music.playing, settings: soundSettings, log: soundLog.slice(-25) }),
 };

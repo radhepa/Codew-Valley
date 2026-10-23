@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { model, preload, realModels } from "./models.ts";
 import { Particles } from "./particles.ts";
+import { Animator, SWING, lineup, type AnimName } from "./anim.ts";
 import { sfx } from "./audio.ts";
 import { ATMOS, WEATHER_U, addWeather, createComposer, createHills, createMeadow, createSky } from "./atmosphere.ts";
 import { Weather } from "./weather.ts";
@@ -314,7 +315,18 @@ export class World {
   private butterflyShow = 1;
   private particles: Particles;
   private player!: THREE.Object3D;
-  private parts: Record<string, THREE.Object3D | undefined> = {};
+  /** Animations: the player's, and each villager's by building id (dev lineup: "dev:<model>"). */
+  private anim!: Animator;
+  private animators = new Map<string, Animator>();
+  private playerLoop = "idle";
+  /** A swing that lands on this node at this time, in sync with the chop/mine animation. */
+  private pendingHit: { node: Node; at: number } | null = null;
+  /** A short step in to striking distance before the swing. */
+  private stepIn: { from: THREE.Vector3; to: THREE.Vector3; t: number } | null = null;
+  /** Who the player is talking to while a dialogue is open. */
+  private talkTo: string | null = null;
+  /** When each villager last waved hello. */
+  private greeted = new Map<string, number>();
   private pip!: THREE.Object3D;
   private villagers = new Map<string, THREE.Object3D>();
   private sites = new Map<string, { root: THREE.Object3D; stages: THREE.Object3D[]; shown: number; lights: THREE.PointLight[]; glow: THREE.MeshStandardMaterial[] }>();
@@ -332,8 +344,6 @@ export class World {
   private target: THREE.Vector3 | null = null;
   private pendingInteract: Node | Npc | null = null;
   private facing = Math.PI;
-  private walkPhase = 0;
-  private swing = 0;
   private cooldown = 0;
   private zoom = 1.2;
   /** Trees that turn see-through when they stand between the camera and the player. */
@@ -559,6 +569,11 @@ export class World {
     const at = site.pos.clone().add(new THREE.Vector3(...look));
     this.building = { meshes, base, t: 0, at };
     this.cinematic = { t: 0, dur: 3.6, look: at, pos: site.pos.clone().add(new THREE.Vector3(...view)) };
+    // the player casts toward the site while it builds, then celebrates as the camera comes back;
+    // the building's villager is happy as the last part lands
+    this.facing = Math.atan2(site.pos.x - this.player.position.x, site.pos.z - this.player.position.z);
+    this.anim.queue("celebrate", 3.3, { big: n >= (this.sites.get(id)?.stages.length ?? 0) });
+    this.animators.get(id)?.queue("happy", 2.2);
     sfx.build();
     this.particles.dust(at.clone().setY(0).add(new THREE.Vector3(0, 0, 3.5)), 14, 4);
   }
@@ -572,6 +587,7 @@ export class World {
     const v = await model(b.villager.model);
     if (this.villagers.has(id)) return;
     this.villagers.set(id, v);
+    this.animators.set(id, new Animator(v, b.villager.model));
     v.position.copy(site.villager);
     v.rotation.y = site.villagerRot ?? 0;
     v.userData.rot = site.villagerRot ?? 0;
@@ -586,14 +602,9 @@ export class World {
     this.player.position.copy(SPAWN);
     this.player.rotation.y = this.facing;
     this.scene.add(this.player);
-    for (const k of ["body", "head", "arm_l", "arm_r", "leg_l", "leg_r"]) {
-      const o = this.player.getObjectByName(k);
-      if (o) {
-        o.userData.rest = o.rotation.clone();
-        o.userData.restY = o.position.y;
-      }
-      this.parts[k] = o;
-    }
+    this.anim = new Animator(this.player, "player");
+    this.anim.talkIntensity = 0.6;
+    await this.anim.attachTools();
     this.pip = await model("pip");
     this.pip.position.copy(PIP_POS);
     this.pip.scale.setScalar(1.6);
@@ -825,31 +836,64 @@ export class World {
     this.facing = Math.atan2(t.pos.x - this.player.position.x, t.pos.z - this.player.position.z);
     if ("kind" in t) {
       if (this.cooldown > 0 || t.hp <= 0) return;
-      this.cooldown = 0.38;
-      this.swing = 1;
-      t.hp--;
-      t.shake = 1;
-      const hitPos = t.pos.clone().add(new THREE.Vector3(0, t.kind === "wood" ? 1.2 : 0.6, 0));
-      if (t.kind === "wood") {
-        sfx.chop();
-        this.particles.chips(hitPos, "#C58B52");
-        this.particles.chips(hitPos.clone().setY(3), "#7FB24A", 3);
-      } else {
-        sfx.clink();
-        this.particles.chips(hitPos, "#A9A39A");
+      const swing = SWING[t.kind === "wood" ? "chop" : "mine"];
+      this.cooldown = swing.dur;
+      this.pendingHit = { node: t, at: this.time + swing.impact };
+      // step in (or back) to striking distance: just outside the trunk, or a stride from the rock's face
+      const away = this.player.position.clone().sub(t.pos).setY(0);
+      const d = Math.max(away.length(), 1e-3);
+      away.divideScalar(d);
+      let reach = t.radius + 0.38;
+      if (t.kind === "stone") {
+        // the pick lands about 0.62 m ahead at knee-to-waist height: stand that far from the rock's face there
+        for (const y of [0.35, 0.12]) {
+          this.raycaster.set(t.pos.clone().addScaledVector(away, 4).setY(y), away.clone().negate());
+          const face = this.raycaster.intersectObject(t.obj, true)[0];
+          if (face) {
+            reach = 4 - face.distance + (y > 0.2 ? 0.62 : 0.5);
+            break;
+          }
+        }
       }
-      const sp = hitPos.clone().project(this.camera);
-      this.hooks.gain(t.kind, ((sp.x + 1) / 2) * innerWidth, ((1 - sp.y) / 2) * innerHeight);
-      if (t.hp <= 0) {
-        t.respawnAt = this.time + RESPAWN_S;
-        t.falling = 0.001;
+      const stand = Math.abs(d - reach) > 0.04 ? t.pos.clone().addScaledVector(away, reach) : this.player.position.clone();
+      if (!stand.equals(this.player.position)) this.stepIn = { from: this.player.position.clone(), to: stand, t: 0 };
+      // a low stone is struck where its top is, a boulder on its face
+      let aim = 0;
+      if (t.kind === "stone") {
+        this.raycaster.set(stand.clone().addScaledVector(away, -0.62).setY(5), new THREE.Vector3(0, -1, 0));
+        const top = this.raycaster.intersectObject(t.obj, true)[0]?.point.y ?? 0;
+        aim = THREE.MathUtils.clamp((top - 0.25) / 0.8, 0, 0.3);
       }
+      this.anim.play(t.kind === "wood" ? "chop" : "mine", { aim });
       return;
     }
     this.keys.clear();
+    if (t.id !== "rune") this.talkTo = t.id;
     if (t.id === "rune") this.hooks.rune();
     else if (t.id === "pip") this.hooks.pip();
     else if (t.id.startsWith("v:")) this.hooks.villager(t.id.slice(2));
+  }
+
+  /** The tool lands: chips fly, the resource is gained. */
+  private hit(t: Node) {
+    if (t.hp <= 0) return;
+    t.hp--;
+    t.shake = 1;
+    const hitPos = t.pos.clone().add(new THREE.Vector3(0, t.kind === "wood" ? 0.8 : 0.6, 0));
+    if (t.kind === "wood") {
+      sfx.chop();
+      this.particles.chips(hitPos, "#C58B52");
+      this.particles.chips(hitPos.clone().setY(3), "#7FB24A", 3);
+    } else {
+      sfx.clink();
+      this.particles.chips(hitPos, "#A9A39A");
+    }
+    const sp = hitPos.clone().project(this.camera);
+    this.hooks.gain(t.kind, ((sp.x + 1) / 2) * innerWidth, ((1 - sp.y) / 2) * innerHeight);
+    if (t.hp <= 0) {
+      t.respawnAt = this.time + RESPAWN_S;
+      t.falling = 0.001;
+    }
   }
 
   // ---- loop ---------------------------------------------------------------------
@@ -875,6 +919,16 @@ export class World {
     const dt = Math.min(0.05, this.clock.getDelta());
     this.time += dt;
     this.cooldown = Math.max(0, this.cooldown - dt);
+    if (this.stepIn) {
+      const s = this.stepIn;
+      s.t = Math.min(1, s.t + dt / 0.15);
+      this.player.position.lerpVectors(s.from, s.to, s.t * s.t * (3 - 2 * s.t));
+      if (s.t >= 1) this.stepIn = null;
+    }
+    if (this.pendingHit && this.time >= this.pendingHit.at) {
+      this.hit(this.pendingHit.node);
+      this.pendingHit = null;
+    }
     if (!this.cinematic && !this.paused) this.movePlayer(dt);
     else this.animatePlayer(dt, 0);
     if (!this.paused && this.keys.has("e") && this.nearest && "kind" in this.nearest) this.doInteract(this.nearest);
@@ -909,7 +963,8 @@ export class World {
     let speed = 0;
     if (dir.lengthSq() > 0) {
       dir.normalize();
-      speed = 5.2;
+      // Shift runs, and so does a long click-to-walk trip (easing into a walk near the end)
+      speed = k.has("shift") || (this.target !== null && this.target.distanceTo(this.player.position) > 7) ? 7.4 : 5.2;
       this.facing = Math.atan2(dir.x, dir.z);
       const next = this.player.position.clone().addScaledVector(dir, speed * dt);
       this.resolve(next);
@@ -942,23 +997,15 @@ export class World {
     let dRot = this.facing - this.player.rotation.y;
     dRot = Math.atan2(Math.sin(dRot), Math.cos(dRot));
     this.player.rotation.y += dRot * Math.min(1, dt * 12);
-    const moving = speed > 0;
-    this.walkPhase += dt * (moving ? 11 : 0);
-    const sw = moving ? Math.sin(this.walkPhase) : 0;
-    const p = this.parts;
-    const set = (o: THREE.Object3D | undefined, x: number) => {
-      if (!o) return;
-      const rest = o.userData.rest as THREE.Euler;
-      o.rotation.x = THREE.MathUtils.lerp(o.rotation.x, rest.x + x, Math.min(1, dt * 14));
-    };
-    this.swing = Math.max(0, this.swing - dt * 3.2);
-    const chop = this.swing > 0 ? Math.sin(this.swing * Math.PI) * -2.2 : 0;
-    set(p.leg_l, sw * 0.7);
-    set(p.leg_r, -sw * 0.7);
-    set(p.arm_l, -sw * 0.6);
-    set(p.arm_r, chop || sw * 0.6);
-    if (p.body) p.body.position.y = (p.body.userData.restY as number) + (moving ? Math.abs(Math.sin(this.walkPhase)) * 0.06 : Math.sin(this.time * 2) * 0.012);
-    if (p.head) p.head.rotation.z = moving ? 0 : Math.sin(this.time * 0.9) * 0.04;
+    // cast while a stage builds, talk while a dialogue is open; look at whoever is in reach
+    if (this.talkTo && !this.paused) this.talkTo = null;
+    const loop = this.building ? "cast" : this.talkTo ? "talk" : "idle";
+    if (loop !== this.playerLoop) this.anim.setLoop((this.playerLoop = loop));
+    const p = this.player.position;
+    const tgt = this.talkTo ? this.npcs.find((n) => n.id === this.talkTo) : this.nearest;
+    this.anim.lookAt(tgt ? Math.atan2(tgt.pos.x - p.x, tgt.pos.z - p.z) - this.player.rotation.y : null);
+    this.anim.update(dt, speed, speed > 6);
+    for (const [k, a] of this.animators) if (k.startsWith("dev:")) a.update(dt);
   }
 
   private updateNodes(dt: number) {
@@ -978,6 +1025,7 @@ export class World {
         } else n.obj.scale.setScalar(Math.max(0.0001, (1 - t) * (n.obj.userData.baseScale ??= n.obj.scale.x)));
         if (t >= 1) {
           n.falling = 0;
+          if (n.pos.distanceTo(this.player.position) < n.radius + 2.2 && !this.anim.busy) this.anim.play("pickup");
           n.obj.visible = false;
           this.particles.dust(n.pos, 6, 1);
         }
@@ -1047,20 +1095,24 @@ export class World {
         if (s) s.scale.setScalar(1 + Math.sin(t * 2.2 - i * 0.5) * 0.04);
       }
     }
-    // villagers breathe, turn toward the player when close; Bram polishes a mug
+    // villagers (anim.ts): the head turns to the player first and the body follows; they wave
+    // hello when the player comes close (the player waves back) and gesture while talking
     for (const [id, v] of this.villagers) {
-      const b = v.getObjectByName("body");
-      if (b) b.position.y = (b.userData.y ??= b.position.y) + Math.sin(t * 1.8 + v.position.x) * 0.015;
-      const near = this.player.position.distanceTo(v.position) < 5;
+      const d = this.player.position.distanceTo(v.position);
+      const near = d < 5;
       const to = Math.atan2(this.player.position.x - v.position.x, this.player.position.z - v.position.z);
       v.rotation.y = lerpAngle(v.rotation.y, near ? to : v.userData.rot, Math.min(1, dt * 3));
-      if (id === "tavern") {
-        const arm = v.getObjectByName("arm_r");
-        if (arm) arm.rotation.x = Math.sin(t * 3) * 0.3 - 0.6;
-      } else {
-        const head = v.getObjectByName("head");
-        if (head) head.rotation.z = Math.sin(t * 0.9 + 1) * 0.08;
+      const a = this.animators.get(id);
+      if (!a) continue;
+      a.lookAt(near ? to - v.rotation.y : null);
+      const talking = this.talkTo === `v:${id}`;
+      if (talking !== !!v.userData.talking) a.setLoop((v.userData.talking = talking) ? "talk" : "idle");
+      if (d < 4.2 && !talking && !this.paused && !this.cinematic && t - (this.greeted.get(id) ?? -1e9) > 60) {
+        this.greeted.set(id, t);
+        a.queue("wave", 0.25);
+        if (!this.anim.busy) this.anim.queue("wave", 0.6);
       }
+      a.update(dt);
     }
     // sails turn once they're up
     const sp = (n: string) => this.special.get(n);
@@ -1158,6 +1210,19 @@ export class World {
     const label = "kind" in best ? (best.kind === "wood" ? "Chop" : "Mine") : best.label;
     const top = best.pos.clone().add(new THREE.Vector3(0, "kind" in best ? (best.kind === "wood" ? 2.4 : 1.6) : 1.9, 0)).project(this.camera);
     this.hooks.prompt(label, ((top.x + 1) / 2) * innerWidth, ((1 - top.y) / 2) * innerHeight);
+  }
+
+  /** Dev: play an animation on the player, a villager (building id or model id), a lineup model, or "all". */
+  playAnim(name: AnimName, who = "player", big = false) {
+    const list = who === "all" ? [this.anim, ...this.animators.values()] : who === "player" ? [this.anim] : [...this.animators.entries()].filter(([k, a]) => k === who || k === `dev:${who}` || a.id === who).map(([, a]) => a);
+    for (const a of list) a.play(name, { big });
+    return list.length;
+  }
+
+  /** Dev: every character in a row just in front of the player, to try the animations on. */
+  async animLineup() {
+    const at = this.player.position.clone().add(new THREE.Vector3(0, 0, 2.6));
+    for (const [id, a] of await lineup(this.scene, at)) this.animators.set(`dev:${id}`, a);
   }
 
   /** Where the player stands, for the dev hook. */
