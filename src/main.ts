@@ -1,9 +1,10 @@
-import "@fontsource/nunito/400.css";
-import "@fontsource/nunito/700.css";
-import "@fontsource/nunito/800.css";
-import "@fontsource/fredoka/500.css";
-import "@fontsource/fredoka/600.css";
-import "@fontsource/fredoka/700.css";
+import "@fontsource/figtree/400.css";
+import "@fontsource/figtree/500.css";
+import "@fontsource/figtree/600.css";
+import "@fontsource/figtree/700.css";
+import "@fontsource/figtree/800.css";
+import "@fontsource-variable/fraunces/full.css";
+import "@fontsource-variable/fraunces/full-italic.css";
 import "@fontsource/jetbrains-mono/400.css";
 import "./style.css";
 import { PythonRunner } from "./python/runner.ts";

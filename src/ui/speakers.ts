@@ -20,4 +20,4 @@ export const toLines = (a: string[]) => a.map(toLine);
 /** The model (and portrait) for a speaker. */
 export const modelOf = (who: string) => MODELS.get(who) ?? "pip";
 
-export const nameTag = (who: string) => (who === "Pip" ? "Pip 🐍" : who);
+export const nameTag = (who: string) => who;

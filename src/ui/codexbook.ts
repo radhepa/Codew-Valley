@@ -1,14 +1,19 @@
 import { CODEX, codexById } from "../content/codex.ts";
 import type { PythonRunner } from "../python/runner.ts";
 import { renderBlocks } from "./blocks.ts";
-import { esc, el } from "./md.ts";
+import { esc, md, el } from "./md.ts";
+import { icon } from "./icons.ts";
 
 /** The Codex book: every page, searchable, with runnable examples. */
 export function codexBook(runner: PythonRunner, startPage: string | undefined, close: () => void): HTMLElement {
-  const root = el(`<div class="panel modal codex" role="dialog" aria-label="The Codex">
-    <div class="modal-head"><span style="font-size:1.6rem">📖</span><h2>The Codex</h2><button class="close" aria-label="Close">✕</button></div>
+  const root = el(`<div class="sheet modal codex" role="dialog" aria-label="The Codex">
+    <div class="modal-head">
+      <span class="mark">${icon("book")}</span>
+      <div class="titles"><div class="eyebrow">Ysolde's notes on the Old Tongue</div><h2>The Codex</h2></div>
+      <button class="close" aria-label="Close">${icon("close")}</button>
+    </div>
     <div class="codex-body">
-      <nav class="codex-nav"><input type="search" placeholder="Search the Codex…" aria-label="Search the Codex"><div class="list"></div></nav>
+      <nav class="codex-nav"><label class="search">${icon("search")}<input type="search" placeholder="Search the Codex" aria-label="Search the Codex"></label><div class="list"></div></nav>
       <main class="codex-main"></main>
     </div>
   </div>`);
@@ -25,19 +30,21 @@ export function codexBook(runner: PythonRunner, startPage: string | undefined, c
   function drawList() {
     const q = search.value.trim().toLowerCase();
     list.innerHTML = "";
-    for (const p of CODEX) {
-      if (q && !text(p.id).includes(q)) continue;
-      const b = el<HTMLButtonElement>(`<button class="${p.id === current ? "on" : ""}">${esc(p.title)}<small>${esc(p.summary)}</small></button>`);
+    CODEX.forEach((p, i) => {
+      if (q && !text(p.id).includes(q)) return;
+      const b = el<HTMLButtonElement>(`<button class="${p.id === current ? "on" : ""}"><span class="no">${i + 1}</span><span>${esc(p.title)}</span><small>${esc(p.summary)}</small></button>`);
       b.addEventListener("click", () => show(p.id));
       list.append(b);
-    }
-    if (!list.children.length) list.append(el(`<p style="font-size:.9rem;color:var(--ink-soft);padding:0 6px">No pages mention “${esc(q)}”.</p>`));
+    });
+    if (!list.children.length) list.append(el(`<p style="font-size:.9rem;color:var(--ink-3);padding:0 6px">No pages mention “${esc(q)}”.</p>`));
   }
   function show(id: string) {
     current = id;
     const p = codexById.get(id)!;
     main.innerHTML = "";
-    main.append(el(`<h2>${esc(p.title)}</h2>`), renderBlocks(p.blocks, runner));
+    const page = el(`<article class="page"><div class="eyebrow">Page ${CODEX.indexOf(p) + 1} of ${CODEX.length}</div><h2>${esc(p.title)}</h2><p class="summary">${md(p.summary)}</p></article>`);
+    page.append(renderBlocks(p.blocks, runner));
+    main.append(page);
     main.scrollTop = 0;
     drawList();
   }

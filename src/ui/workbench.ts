@@ -8,8 +8,9 @@ import { renderBlocks } from "./blocks.ts";
 import { createEditor } from "./editor.ts";
 import { friendlyError } from "./errors.ts";
 import { esc, md, el } from "./md.ts";
+import { icon } from "./icons.ts";
 import { portrait } from "./portrait.ts";
-import { modelOf, toLine } from "./speakers.ts";
+import { modelOf, nameTag, toLine } from "./speakers.ts";
 
 export interface BenchOptions {
   challenge: Challenge;
@@ -28,33 +29,32 @@ type Tab = "story" | "learn" | "quiz" | "task";
 export function workbench(o: BenchOptions): HTMLElement {
   const c = o.challenge;
   const data = store.data;
-  const root = el(`<div class="panel modal bench" role="dialog" aria-label="${esc(c.title)}">
+  const root = el(`<div class="sheet modal bench" role="dialog" aria-label="${esc(c.title)}">
     <div class="modal-head">
-      <span style="font-size:1.5rem">🪨</span>
-      <h2>${esc(c.title)} <small style="font-family:var(--font);font-weight:600;color:var(--ink-soft);font-size:.9rem">· Part ${o.stage} of ${o.total}: ${esc(c.part)}</small></h2>
-      <button class="close" aria-label="Close">✕</button>
+      <div class="titles"><div class="eyebrow">Part ${o.stage} of ${o.total} · ${esc(c.part)}</div><h2>${esc(c.title)}</h2></div>
+      <nav class="steps" role="tablist"></nav>
+      <button class="close" aria-label="Close">${icon("close")}</button>
     </div>
     <div class="bench-body">
-      <div class="bench-left">
-        <div class="tabs" role="tablist"></div>
-        <div class="tab-body"></div>
-      </div>
-      <div class="bench-right">
+      <div class="bench-left"><div class="tab-body"></div></div>
+      <div class="bench-right dark">
         <div class="bench-tools">
-          <button class="btn wood run" title="Run your program (Ctrl+Enter)">▶ Run</button>
-          <button class="btn check" title="Check your program against the rune stone">✓ Check &amp; build</button>
+          <span class="file">rune.py</span>
+          <button class="btn line run" title="Run your program (Ctrl+Enter)">${icon("play")} Run</button>
+          <button class="btn rune check" title="Check your program against the rune stone">${icon("check")} Check &amp; build</button>
           <span class="spacer"></span>
           <span class="py-status"></span>
-          <button class="btn ghost reset" title="Put the starter code back">↺ Reset</button>
+          <button class="btn quiet reset" title="Put the starter code back" aria-label="Reset to the starter code">${icon("reset")}</button>
         </div>
         <div class="editor-wrap"></div>
         <div class="feedback" aria-live="polite"></div>
-        <div class="console" aria-label="Output" aria-live="polite"><span class="dim">Your program's output appears here. Press ▶ Run to try it.</span></div>
+        <div class="console-head"><span class="label">Output</span></div>
+        <div class="console" aria-label="Output" aria-live="polite"><span class="dim">Your program's output appears here. Press Run (or Ctrl+Enter) to try it.</span></div>
       </div>
     </div>
   </div>`);
 
-  const tabs = root.querySelector<HTMLElement>(".tabs")!;
+  const tabs = root.querySelector<HTMLElement>(".steps")!;
   const body = root.querySelector<HTMLElement>(".tab-body")!;
   const consoleEl = root.querySelector<HTMLElement>(".console")!;
   const feedback = root.querySelector<HTMLElement>(".feedback")!;
@@ -62,6 +62,7 @@ export function workbench(o: BenchOptions): HTMLElement {
   const checkBtn = root.querySelector<HTMLButtonElement>(".check")!;
   const status = root.querySelector<HTMLElement>(".py-status")!;
   root.querySelector(".close")!.addEventListener("click", o.close);
+  const CHECK_LABEL = `${icon("check")} Check &amp; build`;
 
   let pipImg = "";
   void portrait("pip").then((u) => {
@@ -72,16 +73,16 @@ export function workbench(o: BenchOptions): HTMLElement {
 
   // ---- left side tabs -------------------------------------------------------
 
-  const labels: Record<Tab, string> = { story: "📜 Story", learn: "📖 Learn", quiz: "❓ Quick check", task: "🛠 Task & hints" };
+  const labels: Record<Tab, string> = { story: "Story", learn: "Lesson", quiz: "Quick check", task: "Task" };
   let tab: Tab = data.drafts[c.id] !== undefined ? "task" : "story";
   function drawTabs() {
     tabs.innerHTML = "";
-    for (const t of Object.keys(labels) as Tab[]) {
+    (Object.keys(labels) as Tab[]).forEach((t, i) => {
       const done = t === "quiz" && data.quiz[c.id];
-      const b = el<HTMLButtonElement>(`<button class="tab ${t === tab ? "on" : ""}" role="tab" aria-selected="${t === tab}">${labels[t]}${done ? '<span class="dot" title="Answered"></span>' : ""}</button>`);
+      const b = el<HTMLButtonElement>(`<button class="step ${t === tab ? "on" : ""} ${done ? "seen" : ""}" role="tab" aria-selected="${t === tab}"><span class="num">${done ? icon("check") : i + 1}</span>${labels[t]}</button>`);
       b.addEventListener("click", () => show(t));
       tabs.append(b);
-    }
+    });
   }
   function show(t: Tab) {
     tab = t;
@@ -94,29 +95,26 @@ export function workbench(o: BenchOptions): HTMLElement {
     root.querySelector(".bench-left")!.scrollTop = 0;
   }
   function nextBtn(label: string, to: Tab) {
-    const b = el<HTMLButtonElement>(`<button class="btn" style="margin-top:12px">${label} →</button>`);
-    b.addEventListener("click", () => show(to));
-    return b;
+    const wrap = el(`<div class="next-step"><button class="btn">${label} ${icon("arrow")}</button></div>`);
+    wrap.querySelector("button")!.addEventListener("click", () => show(to));
+    return wrap;
   }
   function story() {
     const s = el(`<div class="story"></div>`);
     for (const raw of c.intro) {
       const line = toLine(raw);
-      if (line.who === "Pip") s.append(el(`<div class="pip-line">${pipTag()}<p>${md(line.text)}</p></div>`));
-      else {
-        const row = el(`<div class="pip-line"><img class="pip" alt="${esc(line.who)}"><p><b>${esc(line.who)}:</b> ${md(line.text)}</p></div>`);
-        void portrait(modelOf(line.who)).then((u) => (row.querySelector("img")!.src = u));
-        s.append(row);
-      }
+      const row = el(`<div class="say">${line.who === "Pip" ? pipTag() : `<img alt="${esc(line.who)}">`}<div><div class="who">${esc(nameTag(line.who))}</div><p>${md(line.text)}</p></div></div>`);
+      if (line.who !== "Pip") void portrait(modelOf(line.who)).then((u) => (row.querySelector("img")!.src = u));
+      s.append(row);
     }
-    body.append(s, nextBtn("Learn what you need", "learn"));
+    body.append(s, nextBtn("Read the lesson", "learn"));
   }
   function learn() {
     const page = codexById.get(c.codex[0])!;
-    body.append(el(`<h3 class="section-title" style="font-size:1.2rem">${esc(page.title)}</h3>`));
+    body.append(el(`<div class="eyebrow">Lesson</div>`), el(`<h3 class="lesson-title">${esc(page.title)}</h3>`));
     body.append(renderBlocks(page.blocks, o.runner));
     if (c.codex.length > 1) {
-      const more = el(`<p style="margin-top:14px">Also useful: </p>`);
+      const more = el(`<p class="also">Also useful: </p>`);
       c.codex.slice(1).forEach((id, i) => {
         const a = el(`<a class="link">${esc(codexById.get(id)!.title)}</a>`);
         a.addEventListener("click", () => o.openCodex(id));
@@ -124,11 +122,11 @@ export function workbench(o: BenchOptions): HTMLElement {
       });
       body.append(more);
     }
-    body.append(nextBtn("Quick check", "quiz"));
+    body.append(nextBtn("Try the quick check", "quiz"));
   }
   function quiz() {
     const q = c.quiz;
-    const wrap = el(`<div class="quiz"><p style="font-weight:700;margin:0 0 6px">${md(q.question)}</p><pre class="code">${esc(q.code)}</pre><div class="opts"></div><div class="why-slot"></div></div>`);
+    const wrap = el(`<div class="quiz"><div class="eyebrow">Quick check</div><p class="q">${md(q.question)}</p><pre class="code">${esc(q.code)}</pre><div class="opts"></div><div class="why-slot"></div></div>`);
     const opts = wrap.querySelector<HTMLElement>(".opts")!;
     const slot = wrap.querySelector<HTMLElement>(".why-slot")!;
     // stable shuffle per challenge so the answer isn't always first
@@ -142,7 +140,7 @@ export function workbench(o: BenchOptions): HTMLElement {
           data.quiz[c.id] = true;
           store.changed();
           slot.innerHTML = "";
-          slot.append(el(`<div class="why">✅ <b>Right!</b> ${md(q.why)}</div>`), nextBtn("On to the task", "task"));
+          slot.append(el(`<div class="why good"><b>Right.</b> ${md(q.why)}</div>`), nextBtn("On to the task", "task"));
           drawTabs();
         } else {
           b.classList.remove("wrong");
@@ -150,7 +148,7 @@ export function workbench(o: BenchOptions): HTMLElement {
           b.classList.add("wrong");
           sfx.error();
           slot.innerHTML = "";
-          slot.append(el(`<div class="why">Not quite. Read it line by line, like Python does, and try another answer. You can press <b>▶ Try it</b> on the Learn tab to test examples.</div>`));
+          slot.append(el(`<div class="why">Not quite. Read it line by line, the way Python does, and try another answer. The examples in the lesson have a <b>Try it</b> button.</div>`));
         }
       });
       opts.append(b);
@@ -158,18 +156,19 @@ export function workbench(o: BenchOptions): HTMLElement {
     body.append(wrap);
   }
   function task() {
-    const t = el(`<div class="task"><h4>Your task</h4><ul></ul></div>`);
-    const ul = t.querySelector("ul")!;
-    for (const line of c.task) ul.append(el(`<li>${md(line)}</li>`));
-    body.append(el(`<div class="pip-line">${pipTag()}<p>Write your program on the right. Press <b>▶ Run</b> to see what it does, then <b>✓ Check &amp; build</b> when you think it's right.</p></div>`), t);
-    const h = el(`<div class="hints"><h4 class="section-title">Stuck?</h4><div class="list"></div></div>`);
+    const t = el(`<div class="task"><div class="eyebrow">Your task</div><h3 class="lesson-title">${esc(c.part)}</h3><ol class="task-list"></ol></div>`);
+    const ol = t.querySelector("ol")!;
+    // lines indented with spaces belong to the step above them
+    for (const line of c.task) ol.append(el(`<li class="${/^\s/.test(line) ? "sub" : ""}">${md(line.trim())}</li>`));
+    body.append(t, el(`<div class="aside">${icon("rune")}<span>Write your program on the right. <b>Run</b> shows what it does; <b>Check &amp; build</b> asks the rune stone when you think it's right.</span></div>`));
+    const h = el(`<div class="hints"><div class="label">Stuck?</div><div class="list"></div></div>`);
     const list = h.querySelector<HTMLElement>(".list")!;
     const drawHints = () => {
       list.innerHTML = "";
       const shown = data.hints[c.id] ?? 0;
-      for (let i = 0; i < shown; i++) list.append(el(`<div class="hint"><b>Hint ${i + 1}:</b> ${md(c.hints[i])}</div>`));
+      for (let i = 0; i < shown; i++) list.append(el(`<div class="hint"><span class="n">Hint ${i + 1}</span><span>${md(c.hints[i])}</span></div>`));
       if (shown < c.hints.length) {
-        const b = el<HTMLButtonElement>(`<button class="btn ghost" style="margin-top:6px">💡 Show hint ${shown + 1} of ${c.hints.length}</button>`);
+        const b = el<HTMLButtonElement>(`<button class="btn line small">${icon("hint")} ${shown ? "Another hint" : "Show a hint"} <span style="opacity:.6">${shown + 1} of ${c.hints.length}</span></button>`);
         b.addEventListener("click", () => {
           data.hints[c.id] = shown + 1;
           store.changed();
@@ -177,7 +176,7 @@ export function workbench(o: BenchOptions): HTMLElement {
         });
         list.append(b);
       }
-      const pages = el(`<p style="font-size:.92rem;margin-top:12px">Codex pages for this part: </p>`);
+      const pages = el(`<p class="pages">Codex pages for this part: </p>`);
       c.codex.forEach((id, i) => {
         const a = el(`<a class="link">${esc(codexById.get(id)!.title)}</a>`);
         a.addEventListener("click", () => o.openCodex(id));
@@ -211,7 +210,7 @@ export function workbench(o: BenchOptions): HTMLElement {
   });
 
   const unsub = o.runner.onStatus((s) => {
-    status.textContent = s.state === "ready" ? `🐍 ${s.message}` : s.message;
+    status.textContent = s.message;
   });
   root.addEventListener("bench:destroy", () => {
     unsub();
@@ -244,7 +243,7 @@ export function workbench(o: BenchOptions): HTMLElement {
     if (res.error) {
       const f = friendlyError(res.error, code);
       editor.markError(res.error.line);
-      const extra = el(`<div style="margin-top:6px;font-size:.88rem"></div>`);
+      const extra = el(`<div style="margin-top:6px;font-size:.86rem"></div>`);
       if (f.codex && codexById.has(f.codex)) {
         const a = el(`<a class="link">Read “${esc(codexById.get(f.codex)!.title)}” in the Codex</a>`);
         a.addEventListener("click", () => o.openCodex(f.codex!));
@@ -309,7 +308,7 @@ export function workbench(o: BenchOptions): HTMLElement {
       if (res.grade?.passed) {
         sfx.success();
         const already = store.isDone(c.id);
-        const b = el<HTMLButtonElement>(`<button class="btn amber" style="margin-top:10px">${already ? "Close" : `🔨 Build the ${esc(c.part.toLowerCase())}!`}</button>`);
+        const b = el<HTMLButtonElement>(`<button class="btn gold">${already ? "Close" : `${icon("hammer")} Build the ${esc(c.part.toLowerCase())}`}</button>`);
         b.addEventListener("click", () => (already ? o.close() : o.build()));
         showFeedback("good", "The rune stone glows!", already ? "Still correct. Nicely done." : "Your program works. The valley is ready to build.", b);
         b.focus();
@@ -319,7 +318,7 @@ export function workbench(o: BenchOptions): HTMLElement {
       }
     } finally {
       runBtn.disabled = checkBtn.disabled = false;
-      checkBtn.innerHTML = "✓ Check &amp; build";
+      checkBtn.innerHTML = CHECK_LABEL;
     }
   }
   runBtn.addEventListener("click", () => void run());

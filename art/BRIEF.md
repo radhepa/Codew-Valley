@@ -45,7 +45,8 @@ explore the rest of the repo.
   - Muted natural palette and chunky low-poly shapes.
   - Baked AO in vertex colours, as `common.py` already does.
   - Cozy and lived-in.
-- Under 25k triangles per building and 3k per character.
+- No triangle limits: spend detail where it makes the model look better.
+  Still report the triangle count.
 
 ## Buildings
 

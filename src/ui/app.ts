@@ -6,11 +6,13 @@ import { sfx } from "../game/audio.ts";
 import type { Resource, World } from "../game/world.ts";
 import { codexBook } from "./codexbook.ts";
 import { esc, md, el } from "./md.ts";
+import { icon } from "./icons.ts";
 import { portrait } from "./portrait.ts";
 import { modelOf, nameTag, toLine, toLines, type Line } from "./speakers.ts";
 import { workbench } from "./workbench.ts";
 
-const ICON: Record<Resource, string> = { wood: "🪵", stone: "🪨" };
+const ICON: Record<Resource, string> = { wood: icon("wood"), stone: icon("stone") };
+const ROMAN = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X", "XI", "XII"];
 
 /** Everything drawn over the 3D world: HUD, dialogue, menus. */
 export class App {
@@ -18,9 +20,9 @@ export class App {
   private world!: World;
   private modal: HTMLElement | null = null;
   private dialogEl: HTMLElement | null = null;
-  private promptEl = el(`<div class="panel prompt" hidden></div>`);
+  private promptEl = el(`<div class="plate prompt" hidden></div>`);
   private resEls: Record<Resource, HTMLElement> = {} as never;
-  private questEl = el(`<div class="panel quest" aria-live="polite"></div>`);
+  private questEl = el(`<div class="plate quest" aria-live="polite"></div>`);
   private toastTimer = 0;
 
   constructor(private runner: PythonRunner) {}
@@ -65,19 +67,19 @@ export class App {
 
   attach(world: World) {
     this.world = world;
-    const res = el(`<div class="hud-res"></div>`);
+    const res = el(`<div class="plate hud-res"></div>`);
     for (const k of ["wood", "stone"] as Resource[]) {
-      const r = el(`<div class="panel res" title="${k}"><span class="ico">${ICON[k]}</span><span class="v">0</span></div>`);
+      const r = el(`<div class="res" title="${k}">${ICON[k]}<span class="v">0</span></div>`);
       this.resEls[k] = r;
       res.append(r);
     }
     const buttons = el(`<div class="hud-buttons">
-      <button class="icon-btn codex-btn" title="The Codex (C)" aria-label="Open the Codex">📖</button>
-      <button class="icon-btn mute-btn" title="Sound on/off (M)" aria-label="Toggle sound">🔊</button>
+      <button class="plate icon-btn codex-btn" title="The Codex (C)" aria-label="Open the Codex">${icon("book")}</button>
+      <button class="plate icon-btn mute-btn" title="Sound on/off (M)" aria-label="Toggle sound">${icon("sound")}</button>
     </div>`);
     buttons.querySelector(".codex-btn")!.addEventListener("click", () => this.openCodex());
     const mute = buttons.querySelector<HTMLButtonElement>(".mute-btn")!;
-    mute.addEventListener("click", () => (mute.textContent = sfx.toggleMute() ? "🔈" : "🔊"));
+    mute.addEventListener("click", () => (mute.innerHTML = icon(sfx.toggleMute() ? "mute" : "sound")));
     this.ui.append(this.questEl, res, buttons, this.promptEl);
     store.on(() => this.drawHud());
     this.drawHud();
@@ -104,19 +106,20 @@ export class App {
     let goal: string;
     let sub: string;
     if (!next) {
-      goal = `${this.building.name} is open! 🎉`;
+      goal = `${esc(this.building.name)} is open`;
       sub = `${this.building.villager ? `Talk to ${this.building.villager.name}. ` : ""}More of the valley is coming soon.`;
     } else if (!store.canAfford(next.cost)) {
       const need: string[] = [];
-      if (d.wood < next.cost.wood) need.push(`${next.cost.wood - d.wood} more wood ${ICON.wood}`);
-      if (d.stone < next.cost.stone) need.push(`${next.cost.stone - d.stone} more stone ${ICON.stone}`);
+      if (d.wood < next.cost.wood) need.push(`${next.cost.wood - d.wood} more wood`);
+      if (d.stone < next.cost.stone) need.push(`${next.cost.stone - d.stone} more stone`);
       goal = `Gather ${need.join(" and ")}`;
       sub = `For the ${next.part.toLowerCase()}. Trees grow in the west grove, rocks in the east quarry. Press <kbd>E</kbd> next to one.`;
     } else {
-      goal = `Use the rune stone: “${esc(next.title)}”`;
-      sub = `You have the materials for the ${esc(next.part.toLowerCase())}. The glowing stone is beside Pip.`;
+      goal = `Speak to the rune stone`;
+      sub = `“${esc(next.title)}” builds the ${esc(next.part.toLowerCase())}. The glowing stone stands beside Pip.`;
     }
-    this.questEl.innerHTML = `<h3>${esc(this.building.name)} · ${done}/${total}</h3><div class="goal">${goal}</div><div class="sub">${sub}</div><div class="progress">${bar}</div>`;
+    const chapter = ROMAN[BUILDINGS.indexOf(this.building)] ?? "";
+    this.questEl.innerHTML = `<div class="eyebrow"><span>Chapter ${chapter} · ${esc(this.building.name)}</span><b>${done} / ${total}</b></div><div class="goal">${goal}</div><div class="sub">${sub}</div><div class="progress">${bar}</div>`;
   }
 
   prompt(label: string | null, x: number, y: number) {
@@ -148,7 +151,7 @@ export class App {
 
   toast(text: string) {
     this.ui.querySelector(".toast")?.remove();
-    const t = el(`<div class="panel toast">${md(text)}</div>`);
+    const t = el(`<div class="plate toast" role="status">${icon("spark")}<span>${md(text)}</span></div>`);
     this.ui.append(t);
     clearTimeout(this.toastTimer);
     this.toastTimer = window.setTimeout(() => t.remove(), 3200);
@@ -162,7 +165,7 @@ export class App {
     this.world.paused = true;
     return new Promise((resolve) => {
       let i = 0;
-      const box = el(`<div class="panel dialog" role="dialog" aria-live="polite">
+      const box = el(`<div class="plate dialog" role="dialog" aria-live="polite">
         <img class="portrait" alt="">
         <div style="flex:1;min-width:0"><div class="who"></div><div class="text"></div><div class="next"></div></div>
       </div>`);
@@ -208,7 +211,7 @@ export class App {
             next.append(b);
           }
         } else {
-          const b = el<HTMLButtonElement>(`<button class="btn">${last ? "Okay!" : "Next ▸"}</button>`);
+          const b = el<HTMLButtonElement>(`<button class="btn">${last ? "Okay" : `Next ${icon("arrow")}`}</button>`);
           b.addEventListener("click", advance);
           next.append(b);
         }
@@ -296,12 +299,16 @@ export class App {
     const current = b === this.building && !this.finished(b);
     const next = current ? this.nextChallenge() : null;
     const done = this.stageCount(b);
-    const root = el(`<div class="panel modal" style="--w:720px" role="dialog" aria-label="Rune stone">
-      <div class="modal-head"><span style="font-size:1.5rem">✨</span><h2>The Rune Stone · ${esc(b.name)}</h2><button class="close" aria-label="Close">✕</button></div>
+    const root = el(`<div class="sheet modal rune-panel" role="dialog" aria-label="Rune stone">
+      <div class="modal-head">
+        <span class="mark">${icon("rune")}</span>
+        <div class="titles"><div class="eyebrow">The rune stone · Chapter ${ROMAN[BUILDINGS.indexOf(b)] ?? ""}</div><h2>${esc(b.name)}</h2></div>
+        <button class="close" aria-label="Close">${icon("close")}</button>
+      </div>
+      <div class="building-tabs" role="tablist"></div>
       <div class="build-body">
-        <div class="building-tabs"></div>
-        <p style="margin:0;color:var(--ink-soft)">${esc(b.blurb)} Each part is built by speaking Python to the stone.</p>
-        <div class="stages"></div>
+        <p class="blurb">${esc(b.blurb)} Each part is built by speaking Python to the stone.</p>
+        <div class="stages" style="--rows:${Math.ceil(b.challenges.length / 2)}"></div>
         <div class="next-slot"></div>
       </div>
     </div>`);
@@ -310,7 +317,7 @@ export class App {
     const tabs = root.querySelector<HTMLElement>(".building-tabs")!;
     if (open.length > 1) {
       for (const x of open) {
-        const t = el<HTMLButtonElement>(`<button class="btn small ${x === b ? "amber" : "ghost"}">${this.finished(x) ? "✓ " : ""}${esc(x.name)}</button>`);
+        const t = el<HTMLButtonElement>(`<button class="${x === b ? "on" : ""}" role="tab" aria-selected="${x === b}">${this.finished(x) ? icon("check") : ""}${esc(x.name)}</button>`);
         t.addEventListener("click", () => x !== b && this.openRune(x));
         tabs.append(t);
       }
@@ -319,25 +326,27 @@ export class App {
     b.challenges.forEach((c, i) => {
       const cls = store.isDone(c.id) ? "done" : i === done ? "next" : "";
       const tag = store.isDone(c.id) ? "button" : "div";
-      const s = el(`<${tag} class="stage ${cls}" ${tag === "button" ? `title="Revisit “${esc(c.title)}”"` : ""}><span class="n">${store.isDone(c.id) ? "✓" : i + 1}</span><span>${esc(c.part)}</span></${tag}>`);
+      const tagText = store.isDone(c.id) ? "Revisit" : i === done && current ? "Next" : "";
+      const s = el(`<${tag} class="stage ${cls}" ${tag === "button" ? `title="Revisit “${esc(c.title)}”"` : ""}><span class="n">${store.isDone(c.id) ? icon("check") : i + 1}</span><span>${esc(c.part)}</span>${tagText ? `<span class="tag">${tagText}</span>` : ""}</${tag}>`);
       if (tag === "button") s.addEventListener("click", () => this.openBench(c));
       stages.append(s);
     });
     const slot = root.querySelector<HTMLElement>(".next-slot")!;
     if (!next) {
-      slot.append(el(`<div class="next-card"><h3>🎉 ${esc(b.name)} is finished!</h3><p style="margin:0">Every part is built. You can reopen any finished part above to practise again.</p></div>`));
+      slot.append(el(`<div class="next-card"><div><div class="label">Complete</div><h3>${esc(b.name)} is finished</h3></div><p>Every part is built. Reopen any part above to practise it again.</p></div>`));
     } else {
       const d = store.data;
       const can = store.canAfford(next.cost);
       const cost = (["wood", "stone"] as Resource[])
         .filter((k) => next.cost[k] > 0)
-        .map((k) => `<span class="${d[k] < next.cost[k] ? "short" : ""}">${ICON[k]} ${d[k]} / ${next.cost[k]} ${k}</span>`)
+        .map((k) => `<span class="${d[k] < next.cost[k] ? "short" : ""}" title="You have ${d[k]} ${k}">${ICON[k]} ${next.cost[k]} ${k}${d[k] < next.cost[k] ? ` · you have ${d[k]}` : ""}</span>`)
         .join("");
       const card = el(`<div class="next-card">
-        <h3>Next: ${esc(next.part)} · “${esc(next.title)}”</h3>
+        <div class="label">Part ${done + 1} · ${esc(next.part)}</div>
+        <h3>${esc(next.title)}</h3>
         <div class="cost">${cost || "<span>No materials needed</span>"}</div>
       </div>`);
-      const btn = el<HTMLButtonElement>(`<button class="btn amber" ${can ? "" : "disabled"}>${can ? "Start the challenge" : "Gather more materials first"}</button>`);
+      const btn = el<HTMLButtonElement>(`<button class="btn ${can ? "rune" : ""}" ${can ? "" : "disabled"}>${can ? `Begin ${icon("arrow")}` : "Gather materials first"}</button>`);
       btn.addEventListener("click", () => this.openBench(next));
       card.append(btn);
       slot.append(card);
@@ -438,26 +447,30 @@ export class App {
 
   titleScreen(onStart: () => void) {
     const hasSave = store.hasSave;
+    const [first, second] = GAME_TITLE.split(" & ");
     const screen = el(`<div class="title-screen">
-      <div class="panel title-card">
-        <h1>${esc(GAME_TITLE)}</h1>
-        <p class="tag">Found a village. Speak the Old Tongue. Build it with real Python.</p>
-        <div class="row"></div>
-        <div class="status"></div>
-        <div class="controls"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> or click to walk · <kbd>E</kbd> to chop, mine and talk · <kbd>C</kbd> Codex</div>
+      <div class="eyebrow">A valley built in Python</div>
+      <h1>${esc(first)} <em>&amp;</em><br>${esc(second ?? "")}</h1>
+      <p class="tag">Found a village from nothing. Learn the Old Tongue, and every line you write raises another wall.</p>
+      <div class="row"></div>
+      <div class="foot">
+        <span class="status status-dot"></span>
+        <span class="controls"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> walk <kbd>E</kbd> gather and talk <kbd>C</kbd> Codex</span>
       </div>
     </div>`);
     const row = screen.querySelector<HTMLElement>(".row")!;
     const status = screen.querySelector<HTMLElement>(".status")!;
-    const begin = el<HTMLButtonElement>(`<button class="btn amber" style="font-size:1.15rem;padding:12px 26px">${hasSave ? "Continue" : "Begin"}</button>`);
+    const begin = el<HTMLButtonElement>(`<button class="btn gold">${hasSave ? "Continue" : "Begin"} ${icon("arrow")}</button>`);
+    this.ui.classList.add("titling");
     begin.addEventListener("click", () => {
       sfx.click();
+      this.ui.classList.remove("titling");
       screen.remove();
       onStart();
     });
     row.append(begin);
     if (hasSave) {
-      const fresh = el<HTMLButtonElement>(`<button class="btn ghost">New game</button>`);
+      const fresh = el<HTMLButtonElement>(`<button class="btn line">New game</button>`);
       fresh.addEventListener("click", () => {
         if (!confirm("Start over? Your village and code will be erased.")) return;
         store.reset();
@@ -465,7 +478,10 @@ export class App {
       });
       row.append(fresh);
     }
-    this.runner.onStatus((s) => (status.textContent = s.state === "ready" ? `🐍 ${s.message}, entirely offline` : s.message));
+    this.runner.onStatus((s) => {
+      status.textContent = s.state === "ready" ? `${s.message}, entirely offline` : s.message;
+      status.classList.toggle("ready", s.state === "ready");
+    });
     this.ui.append(screen);
   }
 
@@ -483,9 +499,9 @@ export class App {
 }
 
 const pipTips = [
-  "Tip: in the workbench, **▶ Run** shows what your program does. Run early, run often!",
+  "Tip: in the workbench, **Run** shows what your program does. Run early, run often!",
   "Tip: if Python shows an error, I'll translate it. Fix one thing, then run again.",
-  "Tip: every example in the Codex has a **▶ Try it** button that runs it for real.",
+  "Tip: every example in the Codex has a **Try it** button that runs it for real.",
   "Tip: stuck? Hints in the workbench go from a gentle nudge to almost the answer.",
   "Tip: scroll the mouse wheel to zoom the camera in and out.",
 ];

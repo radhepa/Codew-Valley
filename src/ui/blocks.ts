@@ -1,6 +1,9 @@
 import type { CodexBlock } from "../content/types.ts";
 import type { PythonRunner } from "../python/runner.ts";
 import { esc, md, el } from "./md.ts";
+import { icon } from "./icons.ts";
+
+const TRY = `${icon("play")} Try it`;
 
 /** Render Codex blocks. Each example gets a "Try it" button that runs it for real. */
 export function renderBlocks(blocks: CodexBlock[], runner: PythonRunner): HTMLElement {
@@ -8,10 +11,10 @@ export function renderBlocks(blocks: CodexBlock[], runner: PythonRunner): HTMLEl
   for (const b of blocks) {
     if ("h" in b) root.append(el(`<h3>${md(b.h)}</h3>`));
     else if ("p" in b) root.append(el(`<p>${md(b.p)}</p>`));
-    else if ("tip" in b) root.append(el(`<div class="tip">💡 ${md(b.tip)}</div>`));
+    else if ("tip" in b) root.append(el(`<div class="tip">${icon("hint")}<span>${md(b.tip)}</span></div>`));
     else {
       const pre = el(`<pre class="code">${esc(b.code)}</pre>`);
-      const btn = el<HTMLButtonElement>(`<button class="try" title="Run this example with real Python">▶ Try it</button>`);
+      const btn = el<HTMLButtonElement>(`<button class="try" title="Run this example with real Python">${TRY}</button>`);
       pre.append(btn);
       root.append(pre);
       const label = el(`<div class="out-label">${b.err ? "Result" : "Output"}</div>`);
@@ -28,7 +31,7 @@ export function renderBlocks(blocks: CodexBlock[], runner: PythonRunner): HTMLEl
           out.classList.toggle("err-out", Boolean(res.error));
           label.textContent = "Real output";
         } finally {
-          btn.textContent = "▶ Try it";
+          btn.innerHTML = TRY;
         }
       });
     }

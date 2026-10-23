@@ -5,33 +5,33 @@ import { python } from "@codemirror/lang-python";
 import { HighlightStyle, syntaxHighlighting, indentUnit, bracketMatching } from "@codemirror/language";
 import { tags as t } from "@lezer/highlight";
 
-// A warm, readable code editor theme to match the parchment UI.
+// A calm night-ink editor theme with warm syntax colours.
 const theme = EditorView.theme(
   {
-    "&": { backgroundColor: "#2b2420", color: "#f4ead7" },
-    ".cm-content": { fontFamily: "var(--mono)", padding: "12px 0", caretColor: "#ffd27a" },
-    ".cm-gutters": { backgroundColor: "#241e1b", color: "#7d6d5e", border: "none" },
+    "&": { backgroundColor: "#1b1e25", color: "#e9e3d5" },
+    ".cm-content": { fontFamily: "var(--mono)", padding: "12px 0", caretColor: "#d6b16a" },
+    ".cm-gutters": { backgroundColor: "#1b1e25", color: "#5a5f6b", border: "none", paddingLeft: "6px" },
     ".cm-activeLine": { backgroundColor: "rgba(255,255,255,0.04)" },
-    ".cm-activeLineGutter": { backgroundColor: "rgba(255,255,255,0.06)", color: "#c9b79f" },
-    "&.cm-focused .cm-cursor": { borderLeftColor: "#ffd27a", borderLeftWidth: "2px" },
-    "&.cm-focused .cm-selectionBackground, .cm-selectionBackground, ::selection": { backgroundColor: "rgba(255, 210, 122, 0.25) !important" },
-    ".cm-matchingBracket": { backgroundColor: "rgba(127, 224, 200, 0.25)", outline: "none" },
+    ".cm-activeLineGutter": { backgroundColor: "transparent", color: "#c8bfac" },
+    "&.cm-focused .cm-cursor": { borderLeftColor: "#d6b16a", borderLeftWidth: "2px" },
+    "&.cm-focused .cm-selectionBackground, .cm-selectionBackground, ::selection": { backgroundColor: "rgba(214, 177, 106, 0.22) !important" },
+    ".cm-matchingBracket": { backgroundColor: "rgba(95, 199, 173, 0.22)", outline: "none" },
     ".cm-scroller": { lineHeight: "1.6" },
   },
   { dark: true },
 );
 
 const highlight = HighlightStyle.define([
-  { tag: t.keyword, color: "#f0a35e", fontWeight: "600" },
-  { tag: [t.string, t.special(t.string)], color: "#a8d878" },
-  { tag: t.number, color: "#f7c96b" },
-  { tag: [t.bool, t.null], color: "#f7c96b", fontWeight: "600" },
-  { tag: t.comment, color: "#8f8273", fontStyle: "italic" },
-  { tag: [t.function(t.variableName), t.function(t.propertyName)], color: "#7fd0e0" },
-  { tag: t.standard(t.variableName), color: "#7fd0e0" },
-  { tag: t.propertyName, color: "#e6c9a8" },
-  { tag: t.operator, color: "#f4ead7" },
-  { tag: t.variableName, color: "#f4ead7" },
+  { tag: t.keyword, color: "#e0a26a", fontWeight: "600" },
+  { tag: [t.string, t.special(t.string)], color: "#a9c98a" },
+  { tag: t.number, color: "#e3c27d" },
+  { tag: [t.bool, t.null], color: "#e3c27d", fontWeight: "600" },
+  { tag: t.comment, color: "#737a88", fontStyle: "italic" },
+  { tag: [t.function(t.variableName), t.function(t.propertyName)], color: "#8cc6d6" },
+  { tag: t.standard(t.variableName), color: "#8cc6d6" },
+  { tag: t.propertyName, color: "#d9c3a5" },
+  { tag: t.operator, color: "#c8bfac" },
+  { tag: t.variableName, color: "#e9e3d5" },
 ]);
 
 const setError = StateEffect.define<number | null>();

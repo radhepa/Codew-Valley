@@ -57,14 +57,14 @@ should look charming, not broken).
 | `stage_11` | Lanterns: two by the door, one hanging sign bracket; glass parts use a material named `glow` |
 | `stage_12` | Hanging sign with a sleepy snake on it, barrels, bench, a crate, potted plants |
 
-Keep the door centred on the front (-Y) side. Under 25k triangles total.
+Keep the door centred on the front (-Y) side.
 
 ### `mill.glb`: "The Whistling Mill" (building 2)
 
 A round stone **tower windmill** with a wooden cap and four lattice sails,
 plus a small wheat field beside it. Same rules as the tavern: top-level
 `stage_01` … `stage_14`, each holding only its new pieces, each stage
-charming as the last visible one, under 25k triangles total.
+charming as the last visible one.
 
 Footprint about **13 m wide × 9 m deep**. The origin is the **centre of the
 tower's base**; the tower (about 4.5 m across at the base, tapering, cap top
@@ -100,7 +100,7 @@ a wide straw hat, freckles, rolled sleeves, a flour-dusted apron over a
 mustard tunic, a red neck scarf. Should read clearly different from Bram and
 the player at gameplay distance (silhouette: the hat).
 
-### Nature and props (each under 2k triangles)
+### Nature and props
 
 `tree_oak.glb`, `tree_pine.glb`, `tree_stump.glb`, `rock_large.glb`,
 `rock_small.glb`, `bush.glb`, `flowers.glb` (small cluster), `grass_tuft.glb`,
@@ -111,7 +111,7 @@ rune parts use a material named `glow`), `signpost.glb`, `lantern_post.glb`.
 Trees: the stump/trunk base sits at the origin; foliage meshes named
 `leaves*` (the game sways them). Trees about 4–6 m tall.
 
-### Characters (each under 3k triangles)
+### Characters
 
 No skeleton needed: the game animates parts in code. Each character is
 separate meshes **named exactly** below, each with its origin at its joint
