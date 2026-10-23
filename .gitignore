@@ -3,3 +3,4 @@ dist/
 public/pyodide/
 *.log
 *.blend1
+__pycache__/
