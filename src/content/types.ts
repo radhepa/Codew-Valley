@@ -42,7 +42,7 @@ export interface Challenge {
   part: string;
   title: string;
   cost: Cost;
-  /** Pip's story lines before the challenge. */
+  /** Story lines before the challenge (Pip, or "Name: …" for a villager). */
   intro: string[];
   /** Codex pages; the first is the lesson shown in the Learn tab. */
   codex: string[];
@@ -57,13 +57,34 @@ export interface Challenge {
   solution: string;
   /** Plausible mistakes; each must fail the checks. */
   wrong: string[];
-  /** Pip's line once the part is built. */
+  /** Line once the part is built (Pip, or "Name: …"). */
   done: string;
+}
+
+/**
+ * A villager. Story lines anywhere in the content are spoken by Pip unless
+ * they start with the villager's name and a colon, e.g. "Wren: Morning!".
+ */
+export interface Villager {
+  name: string;
+  /** Model file in public/models (ART.md), also used for the portrait. */
+  model: string;
+  /** "start": arrives when the chapter begins; "end": when the building is finished. */
+  arrives: "start" | "end";
 }
 
 export interface Building {
   id: string;
   name: string;
   blurb: string;
+  villager: Villager;
+  /** Lines when the chapter begins (after the previous building is finished). */
+  opening: string[];
+  /** Lines when the last part is built. */
+  finale: string[];
+  /** What the villager says when you talk to them during the chapter. */
+  chatDuring: string[];
+  /** What the villager says once their building is finished. */
+  chatAfter: string[];
   challenges: Challenge[];
 }

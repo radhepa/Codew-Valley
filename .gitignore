@@ -4,3 +4,4 @@ public/pyodide/
 *.log
 *.blend1
 __pycache__/
+art/logs/

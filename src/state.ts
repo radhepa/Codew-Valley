@@ -15,9 +15,11 @@ export interface SaveData {
   /** Quiz answered correctly, per challenge. */
   quiz: Record<string, boolean>;
   introSeen: boolean;
+  /** Buildings whose chapter opening has been shown. */
+  opened: string[];
 }
 
-const fresh = (): SaveData => ({ wood: 0, stone: 0, done: [], drafts: {}, hints: {}, quiz: {}, introSeen: false });
+const fresh = (): SaveData => ({ wood: 0, stone: 0, done: [], drafts: {}, hints: {}, quiz: {}, introSeen: false, opened: [] });
 
 function load(): SaveData {
   try {

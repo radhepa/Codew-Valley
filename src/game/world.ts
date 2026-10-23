@@ -4,6 +4,7 @@ import { Particles } from "./particles.ts";
 import { sfx } from "./audio.ts";
 import { ATMOS, createComposer, createHills, createMeadow, createSky } from "./atmosphere.ts";
 import type { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer.js";
+import { BUILDINGS } from "../content/index.ts";
 
 export type Resource = "wood" | "stone";
 
@@ -14,7 +15,8 @@ export interface WorldHooks {
   prompt(label: string | null, x: number, y: number): void;
   rune(): void;
   pip(): void;
-  bram(): void;
+  /** Talk to the villager of this building. */
+  villager(buildingId: string): void;
 }
 
 interface Node {
@@ -30,7 +32,8 @@ interface Node {
 }
 
 interface Npc {
-  id: "pip" | "bram" | "rune";
+  /** "pip", "rune", or "v:<building id>" for a villager. */
+  id: string;
   obj: THREE.Object3D;
   pos: THREE.Vector3;
   radius: number;
@@ -49,7 +52,7 @@ const PLAY_RADIUS = 30;
 const TAVERN_POS = new THREE.Vector3(0, 0, -7);
 const RUNE_POS = new THREE.Vector3(6.2, 0, -1.6);
 const PIP_POS = new THREE.Vector3(7.4, 0, -0.9);
-const BRAM_POS = new THREE.Vector3(2.3, 0, TAVERN_POS.z + 4.8);
+const MILL_POS = new THREE.Vector3(-9, 0, -19);
 const SPAWN = new THREE.Vector3(0, 0, 9);
 const POND = { x: 13, z: 9, r: 4.2 };
 /** Dirt paths (polyline points on the ground). */
@@ -74,7 +77,68 @@ const PATHS: [number, number][][] = [
     [10, -1],
     [16, -3],
   ],
+  [
+    [-1, -2.6],
+    [-8, -5],
+    [-8.6, -13],
+    [-9, -15.8],
+  ],
 ];
+
+interface Rect {
+  /** Centre offset from the site position. */
+  x: number;
+  z: number;
+  hw: number;
+  hd: number;
+}
+
+/** Where each building stands (ids match content/index.ts) and what its stages switch on. */
+interface Site {
+  pos: THREE.Vector3;
+  /** Kept clear of decor and flattened. */
+  area: Rect;
+  /** Solid once the plot exists. */
+  solid: Rect;
+  villager: THREE.Vector3;
+  villagerRot: number;
+  /** Lanterns light from this stage on. */
+  litAt: number;
+  /** Camera look-at and position for the build cinematic of stage n, relative to pos. */
+  cine(n: number): { look: [number, number, number]; view: [number, number, number] };
+}
+
+const SITES: Record<string, Site> = {
+  tavern: {
+    pos: TAVERN_POS,
+    area: { x: 0, z: 0, hw: 6, hd: 5.5 },
+    solid: { x: 0, z: 0, hw: 3.6, hd: 2.6 },
+    villager: new THREE.Vector3(2.3, 0, TAVERN_POS.z + 4.8),
+    villagerRot: 0.2,
+    litAt: 11,
+    cine: () => ({ look: [0, 2, 0], view: [7, 8, 13] }),
+  },
+  mill: {
+    pos: MILL_POS,
+    area: { x: -3, z: 0, hw: 6.5, hd: 5 },
+    solid: { x: 0, z: 0, hw: 2.2, hd: 2.2 },
+    villager: new THREE.Vector3(MILL_POS.x + 2.6, 0, MILL_POS.z + 4),
+    villagerRot: -0.5,
+    litAt: 14,
+    cine: (n) => (n >= 11 && n <= 13 ? { look: [-5, 0.8, 0], view: [-1, 9, 15] } : { look: [0, 4.6, 0], view: [9, 10, 26] }),
+  },
+};
+
+/** 1 inside a site's area, fading to 0 four metres out. */
+function siteMask(x: number, z: number) {
+  let m = 0;
+  for (const s of Object.values(SITES)) {
+    const dx = Math.max(0, Math.abs(x - s.pos.x - s.area.x) - s.area.hw);
+    const dz = Math.max(0, Math.abs(z - s.pos.z - s.area.z) - s.area.hd);
+    m = Math.max(m, 1 - Math.min(1, Math.hypot(dx, dz) / 4));
+  }
+  return m;
+}
 
 function noise2(x: number, z: number) {
   return Math.sin(x * 0.21 + Math.sin(z * 0.13) * 2) * 0.5 + Math.sin(z * 0.17 - x * 0.07) * 0.5;
@@ -96,11 +160,17 @@ function groundHeight(x: number, z: number) {
   if (r > PLAY_RADIUS - 2) {
     // a soft grassy rim around the valley, then gently rolling land out to the hills
     const t = Math.min(1, (r - (PLAY_RADIUS - 2)) / 14);
-    y += t * t * (3 - 2 * t) * 4 + noise2(x * 1.7, z * 1.7) * t * 1.4;
+    y += (t * t * (3 - 2 * t) * 4 + noise2(x * 1.7, z * 1.7) * t * 1.4) * (1 - siteMask(x, z));
   }
   const dp = Math.hypot(x - POND.x, z - POND.z);
   if (dp < POND.r + 0.8) y -= (1 - Math.min(1, Math.max(0, (dp - POND.r + 0.8) / 1.6))) * 0.55;
   return y;
+}
+
+/** Turn from angle a toward b the short way round. */
+function lerpAngle(a: number, b: number, t: number) {
+  const d = Math.atan2(Math.sin(b - a), Math.cos(b - a));
+  return a + d * t;
 }
 
 /** Ease with a little overshoot, for things popping into place. */
@@ -120,10 +190,9 @@ export class World {
   private player!: THREE.Object3D;
   private parts: Record<string, THREE.Object3D | undefined> = {};
   private pip!: THREE.Object3D;
-  private bram: THREE.Object3D | null = null;
-  private tavern!: THREE.Object3D;
-  private stages: THREE.Object3D[] = [];
-  private stageShown = 0;
+  private villagers = new Map<string, THREE.Object3D>();
+  private sites = new Map<string, { root: THREE.Object3D; stages: THREE.Object3D[]; shown: number; lights: THREE.PointLight[]; glow: THREE.MeshStandardMaterial[] }>();
+  private sails: THREE.Object3D | null = null;
   private nodes: Node[] = [];
   private npcs: Npc[] = [];
   private colliders: Collider[] = [];
@@ -141,11 +210,10 @@ export class World {
   private fadeables: { obj: THREE.Object3D; mats: THREE.MeshStandardMaterial[]; opacity: number }[] = [];
   private cam = new THREE.Vector3();
   private cinematic: { t: number; dur: number; look: THREE.Vector3; pos: THREE.Vector3 } | null = null;
-  private building: { meshes: THREE.Object3D[]; base: { y: number; s: THREE.Vector3 }[]; t: number } | null = null;
+  private building: { meshes: THREE.Object3D[]; base: { y: number; s: THREE.Vector3 }[]; t: number; at: THREE.Vector3 } | null = null;
   private smokeTimer = 0;
   private time = 0;
   private raycaster = new THREE.Raycaster();
-  private lanternLights: THREE.PointLight[] = [];
   private nearest: Node | Npc | null = null;
   private composer: EffectComposer;
   private tickSky: (t: number, camera: THREE.Camera) => void = () => {};
@@ -167,14 +235,16 @@ export class World {
 
   // ---- setup ----------------------------------------------------------------
 
-  async build(stage: number) {
-    await preload(["tavern", "tree_oak", "tree_pine", "tree_stump", "rock_large", "rock_small", "bush", "flowers", "grass_tuft", "fence", "log_pile", "stone_pile", "rune_stone", "signpost", "lantern_post", "player", "innkeeper", "pip"]);
+  /** progress: parts built per building id. */
+  async build(progress: Record<string, number>) {
+    await preload([...BUILDINGS.flatMap((b) => [b.id, b.villager.model]), "tree_oak", "tree_pine", "tree_stump", "rock_large", "rock_small", "bush", "flowers", "grass_tuft", "fence", "log_pile", "stone_pile", "rune_stone", "signpost", "lantern_post", "player", "pip"]);
     this.tickSky = createSky(this.scene);
     createHills(this.scene);
     this.lights();
     this.ground();
     this.water();
-    await this.placeTavern(stage);
+    for (const b of BUILDINGS) await this.placeSite(b.id, progress[b.id] ?? 0);
+    await this.placeVillage();
     await this.placeCharacters();
     await this.placeResources();
     await this.placeDecor();
@@ -256,22 +326,40 @@ export class World {
     this.colliders.push({ x: POND.x, z: POND.z, r: POND.r - 0.3 });
   }
 
-  private async placeTavern(stage: number) {
-    this.tavern = await model("tavern");
-    this.tavern.position.copy(TAVERN_POS);
-    this.scene.add(this.tavern);
-    this.stages = [];
-    for (let i = 1; i <= 12; i++) {
-      const s = this.tavern.getObjectByName(`stage_${String(i).padStart(2, "0")}`);
-      if (s) this.stages.push(s);
+  private async placeSite(id: string, stage: number) {
+    const site = SITES[id];
+    const root = await model(id);
+    root.position.copy(site.pos);
+    this.scene.add(root);
+    const stages: THREE.Object3D[] = [];
+    for (let i = 1; ; i++) {
+      const st = root.getObjectByName(`stage_${String(i).padStart(2, "0")}`);
+      if (!st) break;
+      stages.push(st);
     }
-    this.tavern.traverse((o) => {
-      if ((o as THREE.PointLight).isPointLight) this.lanternLights.push(o as THREE.PointLight);
+    const lights: THREE.PointLight[] = [];
+    const glow: THREE.MeshStandardMaterial[] = [];
+    root.traverse((o) => {
+      if ((o as THREE.PointLight).isPointLight) lights.push(o as THREE.PointLight);
+      const m = o as THREE.Mesh;
+      const mt = m.material as THREE.MeshStandardMaterial | undefined;
+      if (m.isMesh && mt?.name.toLowerCase().startsWith("glow")) {
+        // own copy, so lighting this building doesn't light another
+        m.material = mt.clone();
+        glow.push(m.material as THREE.MeshStandardMaterial);
+      }
+      if (/^wheat/i.test(o.name)) this.swaying.push({ obj: o, phase: o.position.x * 1.7 + o.position.z, base: o.rotation.clone() });
+      if (o.name === "sails") this.sails = o;
     });
-    this.showStages(stage);
+    this.sites.set(id, { root, stages, shown: 0, lights, glow });
+    this.showStages(id, stage);
     // the building plot is solid once building starts
-    for (let x = -3.6; x <= 3.6; x += 1.2) for (const z of [-2.6, -1.3, 0, 1.3, 2.6]) this.colliders.push({ x: TAVERN_POS.x + x, z: TAVERN_POS.z + z, r: 0.95 });
+    const r = site.solid;
+    for (let x = -r.hw; x <= r.hw + 0.01; x += 1.2)
+      for (let z = -r.hd; z <= r.hd + 0.01; z += 1.3) this.colliders.push({ x: site.pos.x + r.x + x, z: site.pos.z + r.z + z, r: 0.95 });
+  }
 
+  private async placeVillage() {
     const rune = await model("rune_stone");
     rune.position.copy(RUNE_POS);
     rune.rotation.y = -0.5;
@@ -286,35 +374,57 @@ export class World {
     this.colliders.push({ x: -1.6, z: 5, r: 0.3 });
   }
 
-  showStages(n: number) {
-    this.stageShown = n;
-    this.stages.forEach((s, i) => (s.visible = i < n));
-    const lit = n >= 11;
-    for (const l of this.lanternLights) l.intensity = lit ? 5 : 0;
-    this.tavern?.traverse((o) => {
-      const m = (o as THREE.Mesh).material as THREE.MeshStandardMaterial | undefined;
-      if (m && m.name.toLowerCase().startsWith("glow")) m.emissiveIntensity = lit ? 2.6 : 0.15;
-    });
-    if (n >= 12) void this.spawnBram();
+  /** Parts built so far for a building. */
+  stagesShown(id: string) {
+    return this.sites.get(id)?.shown ?? 0;
   }
 
-  /** Reveal stage n with a building animation and a short camera move. */
-  buildStage(n: number) {
-    this.showStages(n);
-    const s = this.stages[n - 1];
-    if (!s) return;
+  showStages(id: string, n: number) {
+    const site = this.sites.get(id);
+    if (!site) return;
+    site.shown = n;
+    site.stages.forEach((st, i) => (st.visible = i < n));
+    const lit = n >= SITES[id].litAt;
+    for (const l of site.lights) l.intensity = lit ? 5 : 0;
+    for (const m of site.glow) m.emissiveIntensity = lit ? 2.6 : 0.15;
+  }
+
+  /** Reveal stage n of a building with a building animation and a short camera move. */
+  buildStage(id: string, n: number) {
+    this.showStages(id, n);
+    const st = this.sites.get(id)?.stages[n - 1];
+    if (!st) return;
+    const site = SITES[id];
     const meshes: THREE.Object3D[] = [];
-    s.traverse((o) => {
-      if ((o as THREE.Mesh).isMesh && o.parent === s) meshes.push(o);
+    st.traverse((o) => {
+      if ((o as THREE.Mesh).isMesh && o.parent === st) meshes.push(o);
     });
-    if (!meshes.length) s.children.forEach((c) => meshes.push(c));
+    if (!meshes.length) st.children.forEach((c) => meshes.push(c));
     const base = meshes.map((m) => ({ y: m.position.y, s: m.scale.clone() }));
     meshes.forEach((m) => m.scale.setScalar(0.0001));
-    this.building = { meshes, base, t: 0 };
-    const look = TAVERN_POS.clone().add(new THREE.Vector3(0, 2, 0));
-    this.cinematic = { t: 0, dur: 3.6, look, pos: TAVERN_POS.clone().add(new THREE.Vector3(7, 8, 13)) };
+    const { look, view } = site.cine(n);
+    const at = site.pos.clone().add(new THREE.Vector3(...look));
+    this.building = { meshes, base, t: 0, at };
+    this.cinematic = { t: 0, dur: 3.6, look: at, pos: site.pos.clone().add(new THREE.Vector3(...view)) };
     sfx.build();
-    this.particles.dust(TAVERN_POS.clone().add(new THREE.Vector3(0, 0, 3.5)), 14, 4);
+    this.particles.dust(at.clone().setY(0).add(new THREE.Vector3(0, 0, 3.5)), 14, 4);
+  }
+
+  /** Put a building's villager at their spot (once). */
+  async showVillager(id: string) {
+    if (this.villagers.has(id)) return;
+    const b = BUILDINGS.find((x) => x.id === id);
+    const site = SITES[id];
+    if (!b || !site) return;
+    const v = await model(b.villager.model);
+    if (this.villagers.has(id)) return;
+    this.villagers.set(id, v);
+    v.position.copy(site.villager);
+    v.rotation.y = site.villagerRot;
+    v.userData.rot = site.villagerRot;
+    this.scene.add(v);
+    this.npcs.push({ id: `v:${id}`, obj: v, pos: site.villager, radius: 0.5, label: `Talk to ${b.villager.name}` });
+    this.colliders.push({ x: site.villager.x, z: site.villager.z, r: 0.4 });
   }
 
   private async placeCharacters() {
@@ -338,21 +448,10 @@ export class World {
     this.colliders.push({ x: PIP_POS.x, z: PIP_POS.z, r: 0.45 });
   }
 
-  private async spawnBram() {
-    if (this.bram) return;
-    const b = await model("innkeeper");
-    if (this.bram) return;
-    this.bram = b;
-    b.position.copy(BRAM_POS);
-    b.rotation.y = 0.2;
-    this.scene.add(b);
-    this.npcs.push({ id: "bram", obj: b, pos: BRAM_POS, radius: 0.5, label: "Talk to Bram" });
-  }
-
   private async placeResources() {
     // forest grove to the west, quarry to the east
     const trees: [number, number][] = [
-      [-11, -3], [-13.5, 0.5], [-16, -2.5], [-12, 4.5], [-15.5, 6], [-18.5, 2], [-19, -5], [-14, -7.5], [-9.5, 8], [-17, 9.5], [-21, 6.5], [-10, -9],
+      [-11, -3], [-13.5, 0.5], [-16, -2.5], [-12, 4.5], [-15.5, 6], [-18.5, 2], [-19, -5], [-14, -7.5], [-9.5, 8], [-17, 9.5], [-21, 6.5], [-16.5, -11],
     ];
     let seed = 1;
     for (const [x, z] of trees) {
@@ -398,7 +497,7 @@ export class World {
     })();
     const clear = (x: number, z: number, pad = 0) => {
       if (pathDist(x, z) < 1.5 + pad) return false;
-      if (Math.abs(x - TAVERN_POS.x) < 6 + pad && Math.abs(z - TAVERN_POS.z) < 5.5 + pad) return false;
+      for (const st of Object.values(SITES)) if (Math.abs(x - st.pos.x - st.area.x) < st.area.hw + pad && Math.abs(z - st.pos.z - st.area.z) < st.area.hd + pad) return false;
       if (Math.hypot(x - POND.x, z - POND.z) < POND.r + 1 + pad) return false;
       if (Math.hypot(x - RUNE_POS.x, z - RUNE_POS.z) < 2.5 + pad) return false;
       for (const n of this.nodes) if (Math.hypot(x - n.pos.x, z - n.pos.z) < n.radius + 1.2 + pad) return false;
@@ -411,7 +510,9 @@ export class World {
       const r = PLAY_RADIUS + 1 + rnd() * 9;
       const x = Math.cos(a) * r;
       const z = Math.sin(a) * r;
-      const t = await model(rnd() < 0.45 ? "tree_pine" : "tree_oak", seed++);
+      const kind = rnd() < 0.45 ? "tree_pine" : "tree_oak";
+      if (siteMask(x, z) > 0.3) continue;
+      const t = await model(kind, seed++);
       t.position.set(x, groundHeight(x, z) - 0.2, z);
       t.scale.setScalar(1.1 + rnd() * 0.6);
       t.rotation.y = rnd() * 6;
@@ -594,7 +695,7 @@ export class World {
     this.keys.clear();
     if (t.id === "rune") this.hooks.rune();
     else if (t.id === "pip") this.hooks.pip();
-    else this.hooks.bram();
+    else if (t.id.startsWith("v:")) this.hooks.villager(t.id.slice(2));
   }
 
   // ---- loop ---------------------------------------------------------------------
@@ -771,14 +872,25 @@ export class World {
         if (s) s.scale.setScalar(1 + Math.sin(t * 2.2 - i * 0.5) * 0.04);
       }
     }
-    if (this.bram) {
-      const b = this.bram.getObjectByName("body");
-      if (b) b.position.y = (b.userData.y ??= b.position.y) + Math.sin(t * 1.8) * 0.015;
-      const arm = this.bram.getObjectByName("arm_r");
-      if (arm) arm.rotation.x = Math.sin(t * 3) * 0.3 - 0.6;
+    // villagers breathe, turn toward the player when close; Bram polishes a mug
+    for (const [id, v] of this.villagers) {
+      const b = v.getObjectByName("body");
+      if (b) b.position.y = (b.userData.y ??= b.position.y) + Math.sin(t * 1.8 + v.position.x) * 0.015;
+      const near = this.player.position.distanceTo(v.position) < 5;
+      const to = Math.atan2(this.player.position.x - v.position.x, this.player.position.z - v.position.z);
+      v.rotation.y = lerpAngle(v.rotation.y, near ? to : v.userData.rot, Math.min(1, dt * 3));
+      if (id === "tavern") {
+        const arm = v.getObjectByName("arm_r");
+        if (arm) arm.rotation.x = Math.sin(t * 3) * 0.3 - 0.6;
+      } else {
+        const head = v.getObjectByName("head");
+        if (head) head.rotation.z = Math.sin(t * 0.9 + 1) * 0.08;
+      }
     }
+    // sails turn once they're up
+    if (this.sails && this.stagesShown("mill") >= 10) this.sails.rotation.z -= dt * 0.7;
     // chimney smoke once the chimney exists
-    if (this.stageShown >= 10) {
+    if (this.stagesShown("tavern") >= 10) {
       this.smokeTimer -= dt;
       if (this.smokeTimer <= 0) {
         this.smokeTimer = 0.45;
@@ -805,7 +917,7 @@ export class World {
       m.position.y = b.base[i].y + (1 - t) * 2.5;
     });
     if (doneAll) {
-      this.particles.sparkles(TAVERN_POS.clone().add(new THREE.Vector3(0, 1, 0)), 30, 4);
+      this.particles.sparkles(b.at, 30, 4);
       this.building = null;
     }
   }

@@ -21,15 +21,15 @@ const world = new World(document.getElementById("scene") as HTMLCanvasElement, {
   prompt: (l, x, y) => app.prompt(l, x, y),
   rune: () => app.openRune(),
   pip: () => app.talkPip(),
-  bram: () => app.talkBram(),
+  villager: (id) => app.talkVillager(id),
 });
 
-await world.build(app.stageCount());
+await world.build(app.progress());
 app.attach(world);
 world.start();
 app.titleScreen(() => {
   if (!store.data.introSeen) void app.intro();
-  else world.paused = false;
+  else app.resume();
 });
 
 // Dev hook for testing from the console or the preview browser.
@@ -46,13 +46,14 @@ window.__pv = {
     store.add("wood", wood);
     store.add("stone", stone);
   },
-  /** Mark the first n tavern parts solved and show them. */
-  stage(n: number) {
-    store.data.done = BUILDINGS[0].challenges.slice(0, n).map((c) => c.id);
+  /** Mark the first n parts of a building solved (and every earlier building) and show them. */
+  stage(n: number, id = app.building.id) {
+    const i = BUILDINGS.findIndex((b) => b.id === id);
+    store.data.done = [...BUILDINGS.slice(0, i).flatMap((b) => b.challenges.map((c) => c.id)), ...BUILDINGS[i].challenges.slice(0, n).map((c) => c.id)];
     store.changed();
-    world.showStages(n);
+    BUILDINGS.forEach((b, j) => world.showStages(b.id, j < i ? b.challenges.length : j === i ? n : 0));
   },
-  build(n: number) {
-    world.buildStage(n);
+  build(n: number, id = app.building.id) {
+    world.buildStage(id, n);
   },
 };

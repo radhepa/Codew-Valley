@@ -32,16 +32,42 @@ export function friendlyError(e: PyErrorInfo, source: string): Friendly {
         return { title: "A string never ends", explain: `A quote was opened${at} but never closed. Every string needs a matching closing quote. If the text has an apostrophe, wrap it in double quotes.`, codex: "strings" };
       if (/was never closed/.test(m))
         return { title: "A bracket is still open", explain: `${m.replace(/^'(.)' was never closed$/, "An opening `$1`")} was never closed${at}. Count your brackets: each \`(\` needs a \`)\`.`, codex: "print" };
-      if (/unmatched|does not match/.test(m))
+      if (/unmatched|parenthesis .* does not match/.test(m))
         return { title: "Brackets don't match", explain: `There's a closing bracket${at} without a matching opening one, or the wrong kind of bracket.`, codex: "print" };
       if (/unexpected indent/.test(m))
-        return { title: "Unexpected spaces at the start", explain: `Line ${e.line ?? "?"} starts with spaces. For now, every line should start right at the left edge.`, codex: "errors" };
+        return { title: "Unexpected spaces at the start", explain: `Line ${e.line ?? "?"} is indented, but nothing above it opens a block. Only the lines under an \`if\`, \`elif\` or \`else\` (a line ending in \`:\`) should be indented; everything else starts at the left edge.`, codex: "indentation" };
+      if (/expected an indented block/.test(m)) {
+        const after = /after '(\w+)' statement on line (\d+)/.exec(m);
+        const opener = after ? `the \`${after[1]}\` on line ${after[2]}` : "a line ending in `:`";
+        return { title: "This line needs indenting", explain: `After ${opener}, Python expects the next line to be indented by four spaces: that's how it knows which lines belong inside. Indent line ${e.line ?? "?"} (press Tab).`, codex: "indentation" };
+      }
+      if (/unindent does not match/.test(m))
+        return { title: "Indents don't line up", explain: `Line ${e.line ?? "?"} goes back out to a column no block above it uses. Lines in the same block must start at exactly the same spot, and an \`else\` or \`elif\` must line up with its \`if\`.`, codex: "indentation" };
+      if (e.type === "TabError")
+        return { title: "Tabs and spaces mixed", explain: `Some lines are indented with tabs and others with spaces${at}. Python can't tell how they line up. Re-indent them all with spaces.`, codex: "indentation" };
+      if (/^expected ':'$/.test(m)) {
+        if (/^else\s+if\b/.test(lineText))
+          return { title: "It's elif, not else if", explain: `Python spells \"else if\" as one word: \`elif\`${at}. Write \`elif condition:\`.`, codex: "else-elif" };
+        if (/^else\b/.test(lineText))
+          return { title: "else has no condition", explain: `\`else\` just means \"otherwise\", so it never gets a condition. Write \`else:\` on its own${at}, or use \`elif condition:\` if you need one.`, codex: "else-elif" };
+        if (/^(if|elif)\b/.test(lineText))
+          return { title: "Missing colon", explain: `An \`${lineText.split(/\s/)[0]}\` line must end with a colon \`:\`${at}, like \`if wind > 10:\`.`, codex: "if" };
+        return { title: "Missing colon", explain: `This line needs a colon \`:\` at the end${at}. Lines that open a block (if, elif, else...) always end with one.`, codex: "if" };
+      }
+      if (/^(If|IF|Else|ELSE|Elif|ELIF)\b/.test(lineText))
+        return { title: "Keywords are lowercase", explain: `Python only understands \`if\`, \`elif\` and \`else\` in lowercase${at}.`, codex: "if" };
+      if (/^elif\s*:/.test(lineText))
+        return { title: "elif needs a condition", explain: `\`elif\` means \"else, if...\", so it needs a condition before the colon${at}, like \`elif wind >= 15:\`. If you meant \"otherwise\", use \`else:\`.`, codex: "else-elif" };
+      if (/^(else|elif)\b/.test(lineText) && /invalid syntax/.test(m))
+        return { title: "else without an if", explain: `This \`${lineText.split(/[\s:]/)[0]}\`${at} has no \`if\` to belong to. It must come straight after an if's block and line up with the \`if\` exactly.`, codex: "else-elif" };
+      if (/=>|=</.test(lineText) && /invalid syntax/.test(m))
+        return { title: "Comparison written backwards", explain: `Write \`>=\` and \`<=\` with the \`=\` second${at}: \`wind >= 10\`, not \`wind => 10\`.`, codex: "comparisons" };
       if (/Missing parentheses in call to 'print'/.test(m))
         return { title: "print needs parentheses", explain: `Put what you want to print inside parentheses: \`print("like this")\`${at}.`, codex: "print" };
       if (/cannot assign to literal|cannot assign to expression|cannot assign to function call/.test(m))
         return { title: "Backwards assignment", explain: `With \`=\` the variable name goes on the **left** and the value on the right, like \`wood = 10\`${at}. To compare two things, use \`==\`.`, codex: "variables" };
       if (/Maybe you meant '==' or ':=' instead of '='/.test(m))
-        return { title: "= versus ==", explain: `\`=\` stores a value; \`==\` compares two values${at}.`, codex: "booleans" };
+        return { title: "= versus ==", explain: `\`=\` stores a value; \`==\` compares two values${at}. Inside an \`if\`, you almost always want \`==\`.`, codex: "comparisons" };
       if (/invalid decimal literal/.test(m))
         return { title: "A name can't start with a number", explain: `Something${at} starts with a digit and then has letters. Variable names must start with a letter, like \`wood2\` not \`2wood\`.`, codex: "variables" };
       if (/Perhaps you forgot a comma/.test(m))

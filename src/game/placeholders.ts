@@ -556,6 +556,196 @@ export function lanternPost(): THREE.Group {
   return g;
 }
 
+// ---- mill -----------------------------------------------------------------
+
+/** The Whistling Mill: tower at the origin, field on the -X side (ART.md). */
+export function mill(): THREE.Group {
+  const r = rng(11);
+  const root = group("mill");
+  const stage = (n: number) => {
+    const g = group(`stage_${String(n).padStart(2, "0")}`);
+    root.add(g);
+    return g;
+  };
+  const onTower = (a: number, rad: number, y: number, o: THREE.Object3D) => {
+    o.position.set(Math.sin(a) * rad, y, Math.cos(a) * rad);
+    o.rotation.y = a;
+    return o;
+  };
+
+  // 1: stakes in a circle, a string ring, a cleared patch
+  {
+    const s = stage(1);
+    const patch = mesh(new THREE.CircleGeometry(3.2, 24), mat("#9B7653"), 0, 0.015, 0);
+    patch.rotation.x = -Math.PI / 2;
+    patch.castShadow = false;
+    s.add(patch);
+    const pts: THREE.Vector3[] = [];
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * Math.PI * 2;
+      const p = new THREE.Vector3(Math.sin(a) * 2.6, 0.55, Math.cos(a) * 2.6);
+      pts.push(p);
+      s.add(box(0.12, 0.8, 0.12, C.wood[0], p.x, 0.4, p.z));
+    }
+    for (let i = 0; i < 8; i++) s.add(beam(pts[i], pts[(i + 1) % 8], 0.025, "#F0E6D0"));
+  }
+  // 2: round stone plinth
+  {
+    const s = stage(2);
+    s.add(cyl(2.45, 2.6, 0.4, C.stone[3], 0, 0.2, 0, 18));
+    for (let i = 0; i < 16; i++) s.add(onTower((i / 16) * Math.PI * 2, 2.5, 0.22, box(0.8, 0.36, 0.3, pick(r, C.stone))));
+  }
+  // 3: lower tower
+  {
+    const s = stage(3);
+    s.add(cyl(2.05, 2.25, 3, C.stone[0], 0, 1.9, 0, 18));
+    for (let i = 0; i < 10; i++) s.add(onTower(r() * 6.3, 2.12, 0.8 + r() * 2.4, box(0.5, 0.26, 0.12, pick(r, C.stone))));
+  }
+  // 4: upper tower, timber band
+  {
+    const s = stage(4);
+    s.add(cyl(1.72, 2.05, 3.1, C.stone[2], 0, 4.95, 0, 18));
+    for (let i = 0; i < 8; i++) s.add(onTower(r() * 6.3, 1.9, 3.8 + r() * 2.2, box(0.45, 0.24, 0.12, pick(r, C.stone))));
+    s.add(cyl(1.82, 1.82, 0.22, C.wood[1], 0, 6.5, 0, 18));
+  }
+  // 5: door and steps
+  {
+    const s = stage(5);
+    s.add(box(1.0, 1.55, 0.24, C.door, 0, 1.18, 2.2));
+    const top = mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.24, 12, 1, false, -Math.PI / 2, Math.PI), mat(C.door), 0, 1.95, 2.2);
+    top.rotation.x = Math.PI / 2;
+    s.add(top, box(1.2, 0.08, 0.3, C.wood[3], 0, 0.43, 2.32), ball(0.05, "#D9B65A", 0.32, 1.15, 2.34, 0));
+    s.add(box(1.4, 0.2, 0.6, C.stone[1], 0, 0.1, 2.75), box(1.2, 0.2, 0.4, C.stone[0], 0, 0.3, 2.55));
+  }
+  // 6: shuttered windows
+  {
+    const s = stage(6);
+    for (const [a, rad, y] of [[0.0, 1.98, 4.3], [1.2, 2.12, 2.4], [-1.4, 1.86, 5.3]] as [number, number, number][]) {
+      const w = group("window");
+      w.add(box(0.5, 0.62, 0.12, "#3A3530"), box(0.6, 0.08, 0.16, C.wood[1], 0, -0.35, 0.02));
+      for (const sx of [-1, 1]) {
+        const sh = box(0.26, 0.6, 0.05, C.door, sx * 0.4, 0, 0.06);
+        sh.rotation.y = sx * 0.5;
+        w.add(sh);
+      }
+      s.add(onTower(a, rad, y, w));
+    }
+  }
+  // 7: gallery ring with a railing
+  {
+    const s = stage(7);
+    s.add(cyl(2.9, 2.9, 0.12, C.wood[2], 0, 3.5, 0, 20));
+    for (let i = 0; i < 20; i++) {
+      const a = (i / 20) * Math.PI * 2;
+      s.add(box(0.08, 0.6, 0.08, C.wood[1], Math.sin(a) * 2.8, 3.85, Math.cos(a) * 2.8));
+      if (i % 4 === 0) s.add(beam(new THREE.Vector3(Math.sin(a) * 2.1, 2.7, Math.cos(a) * 2.1), new THREE.Vector3(Math.sin(a) * 2.8, 3.45, Math.cos(a) * 2.8), 0.1, C.wood[3]));
+    }
+    const rail = mesh(new THREE.TorusGeometry(2.8, 0.05, 4, 24), mat(C.wood[0]), 0, 4.15, 0);
+    rail.rotation.x = Math.PI / 2;
+    s.add(rail);
+  }
+  // 8: rounded shingle cap
+  {
+    const s = stage(8);
+    const cap = mesh(new THREE.SphereGeometry(1.95, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2), mat(C.wood[1]), 0, 6.6, 0);
+    cap.scale.y = 1.15;
+    s.add(cap, cyl(2.0, 2.0, 0.18, C.wood[3], 0, 6.62, 0, 18));
+  }
+  // 9: windshaft and hub
+  {
+    const s = stage(9);
+    const shaft = cyl(0.14, 0.16, 1.5, C.wood[3], 0, 7, 2.35, 8);
+    shaft.rotation.x = Math.PI / 2;
+    s.add(shaft, ball(0.26, C.wood[1], 0, 7, 3.05, 1));
+  }
+  // 10: four lattice sails, spun by the game around the hub
+  {
+    const s = stage(10);
+    const sails = group("sails");
+    sails.position.set(0, 7, 3.15);
+    for (let i = 0; i < 4; i++) {
+      const arm = group("sail");
+      arm.rotation.z = (i / 4) * Math.PI * 2 + 0.3;
+      arm.add(box(0.16, 4.4, 0.1, C.wood[3], 0, 2.25, 0));
+      arm.add(box(0.95, 3.3, 0.03, "#EFE6D2", 0.56, 2.7, 0.02));
+      for (let k = 0; k < 5; k++) arm.add(box(1.0, 0.05, 0.06, C.wood[1], 0.55, 1.05 + k * 0.82, 0.05));
+      sails.add(arm);
+    }
+    s.add(sails);
+  }
+  // 11: tilled field rows on the -X side
+  const rows = [-7.9, -7.0, -6.1, -5.2, -4.3, -3.4];
+  {
+    const s = stage(11);
+    s.add(span(-8.5, 0, -3.6, -2.8, 0.05, 3.6, "#6B4E33"));
+    for (const x of rows) s.add(box(0.45, 0.14, 6.8, "#7A5A3C", x, 0.08, 0));
+  }
+  // 12: wheat
+  {
+    const s = stage(12);
+    const stalk = mat("#C9A64E");
+    const head = mat("#E8C766");
+    for (const x of rows)
+      for (let z = -3.2; z <= 3.2; z += 0.55) {
+        const w = group(`wheat_${s.children.length}`);
+        w.position.set(x + (r() - 0.5) * 0.12, 0.12, z);
+        const h = 0.6 + r() * 0.25;
+        w.add(mesh(new THREE.CylinderGeometry(0.035, 0.05, h, 4), stalk, 0, h / 2, 0));
+        w.add(mesh(new THREE.ConeGeometry(0.08, 0.26, 5), head, 0, h + 0.08, 0));
+        s.add(w);
+      }
+  }
+  // 13: fence with a gate, flour sacks, a little cart
+  {
+    const s = stage(13);
+    const post = (x: number, z: number) => s.add(box(0.12, 0.8, 0.12, C.wood[1], x, 0.4, z));
+    const rail = (x0: number, z0: number, x1: number, z1: number) => {
+      s.add(beam(new THREE.Vector3(x0, 0.55, z0), new THREE.Vector3(x1, 0.55, z1), 0.07, C.wood[0]));
+      s.add(beam(new THREE.Vector3(x0, 0.3, z0), new THREE.Vector3(x1, 0.3, z1), 0.07, C.wood[0]));
+    };
+    const X0 = -8.7, X1 = -2.6, Z0 = -3.8, Z1 = 3.8;
+    for (const [x0, z0, x1, z1] of [[X0, Z0, X1, Z0], [X0, Z0, X0, Z1], [X1, Z0, X1, Z1], [X0, Z1, -6.2, Z1], [-5.0, Z1, X1, Z1]] as number[][]) {
+      rail(x0, z0, x1, z1);
+      const n = Math.max(1, Math.round(Math.hypot(x1 - x0, z1 - z0) / 1.5));
+      for (let i = 0; i <= n; i++) post(x0 + ((x1 - x0) * i) / n, z0 + ((z1 - z0) * i) / n);
+    }
+    const gate = box(1.1, 0.5, 0.06, C.wood[2], -5.6, 0.45, Z1 + 0.3);
+    gate.rotation.y = 0.6;
+    s.add(gate);
+    for (const [x, z, sc] of [[1.5, 2.6, 1], [1.95, 2.3, 0.85], [1.7, 2.9, 0.8]]) {
+      const sack = ball(0.32 * sc, "#E9DFC8", x, 0.28 * sc, z, 1);
+      sack.scale.y = 1.2;
+      s.add(sack, ball(0.08 * sc, "#B9A27A", x, 0.62 * sc, z, 0));
+    }
+    const cart = group("cart");
+    cart.position.set(3.2, 0, 1.4);
+    cart.rotation.y = -0.4;
+    cart.add(box(1.2, 0.4, 0.8, C.wood[0], 0, 0.6, 0), box(0.08, 0.08, 1.2, C.wood[3], 0.9, 0.5, 0));
+    for (const sz of [-1, 1]) {
+      const wheel = cyl(0.32, 0.32, 0.08, C.wood[3], 0, 0.32, sz * 0.45, 10);
+      wheel.rotation.x = Math.PI / 2;
+      cart.add(wheel);
+    }
+    cart.add(ball(0.22, "#E9DFC8", -0.2, 0.95, 0, 1), ball(0.2, "#E9DFC8", 0.25, 0.92, 0.1, 1));
+    s.add(cart);
+  }
+  // 14: lanterns, weather vane, sign
+  {
+    const s = stage(14);
+    for (const sx of [-1, 1]) {
+      s.add(box(0.06, 0.4, 0.06, "#2F2A26", sx * 0.85, 2.15, 2.25));
+      s.add(box(0.2, 0.26, 0.2, mat(C.glow, { glow: true }), sx * 0.85, 1.85, 2.3));
+    }
+    s.add(cyl(0.03, 0.03, 1.0, "#2F2A26", 0, 9.3, 0, 5));
+    const arrow = box(0.9, 0.05, 0.05, "#2F2A26", 0, 9.55, 0);
+    arrow.rotation.y = 0.7;
+    s.add(arrow, mesh(new THREE.ConeGeometry(0.09, 0.2, 4), mat("#2F2A26"), 0, 9.85, 0));
+    s.add(box(0.06, 0.06, 0.7, "#2F2A26", 1.3, 2.7, 2.35), box(0.7, 0.5, 0.06, C.wood[2], 1.3, 2.3, 2.7));
+    s.add(mesh(new THREE.ConeGeometry(0.12, 0.36, 5), mat("#E8C766"), 1.3, 2.3, 2.75));
+  }
+  return root;
+}
+
 // ---- characters -----------------------------------------------------------
 
 interface Outfit {
@@ -617,6 +807,17 @@ export function innkeeper(): THREE.Group {
   return character("innkeeper", { tunic: "#B5523B", pants: "#5A3620", hair: "#5A3620", round: true, apron: true, moustache: true });
 }
 
+/** Wren the miller: straw hat, red scarf, flour-dusted apron. */
+export function miller(): THREE.Group {
+  const g = character("miller", { tunic: "#C9A13B", pants: "#6B5240", hair: "#B5603A", apron: true });
+  const head = g.getObjectByName("head")!;
+  head.add(cyl(0.56, 0.58, 0.04, "#E3C46E", 0, 0.56, 0, 16), cyl(0.25, 0.3, 0.22, "#E3C46E", 0, 0.68, 0, 12), cyl(0.305, 0.305, 0.05, C.red, 0, 0.6, 0, 12));
+  const scarf = mesh(new THREE.TorusGeometry(0.17, 0.05, 6, 12), mat(C.red), 0, 0.6, 0);
+  scarf.rotation.x = Math.PI / 2;
+  g.getObjectByName("body")!.add(scarf);
+  return g;
+}
+
 export function pip(): THREE.Group {
   const g = group("pip");
   const m = mat(C.pip);
@@ -651,6 +852,7 @@ export function pip(): THREE.Group {
 
 export const PLACEHOLDERS: Record<string, (seed?: number) => THREE.Object3D> = {
   tavern,
+  mill,
   tree_oak: treeOak,
   tree_pine: treePine,
   tree_stump: stump,
@@ -667,5 +869,6 @@ export const PLACEHOLDERS: Record<string, (seed?: number) => THREE.Object3D> = {
   lantern_post: lanternPost,
   player,
   innkeeper,
+  miller,
   pip,
 };

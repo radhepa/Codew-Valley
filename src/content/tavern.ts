@@ -9,6 +9,16 @@ export const TAVERN: Building = {
   id: "tavern",
   name: "The Sleepy Serpent",
   blurb: "Every valley needs a warm hearth, a hot stew and a place to tell stories.",
+  villager: { name: "Bram", model: "innkeeper", arrives: "end" },
+  opening: [],
+  finale: [
+    "Bram: Well I'll be! A proper tavern, built with runes. Pull up a stool, founder. First stew's on the house.",
+  ],
+  chatDuring: [],
+  chatAfter: [
+    "Bram: Welcome to The Sleepy Serpent! Mind the step, I made it myself. Well, you did.",
+    "Bram: Pip tells me there's a whole village waiting to be built. Wherever there's a village, there's thirsty builders. I'll keep the stew warm.",
+  ],
   challenges: [
     {
       id: "t01-first-words",

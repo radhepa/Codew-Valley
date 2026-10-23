@@ -9,6 +9,7 @@ import { createEditor } from "./editor.ts";
 import { friendlyError } from "./errors.ts";
 import { esc, md, el } from "./md.ts";
 import { portrait } from "./portrait.ts";
+import { modelOf, toLine } from "./speakers.ts";
 
 export interface BenchOptions {
   challenge: Challenge;
@@ -99,7 +100,15 @@ export function workbench(o: BenchOptions): HTMLElement {
   }
   function story() {
     const s = el(`<div class="story"></div>`);
-    for (const line of c.intro) s.append(el(`<div class="pip-line">${pipTag()}<p>${md(line)}</p></div>`));
+    for (const raw of c.intro) {
+      const line = toLine(raw);
+      if (line.who === "Pip") s.append(el(`<div class="pip-line">${pipTag()}<p>${md(line.text)}</p></div>`));
+      else {
+        const row = el(`<div class="pip-line"><img class="pip" alt="${esc(line.who)}"><p><b>${esc(line.who)}:</b> ${md(line.text)}</p></div>`);
+        void portrait(modelOf(line.who)).then((u) => (row.querySelector("img")!.src = u));
+        s.append(row);
+      }
+    }
     body.append(s, nextBtn("Learn what you need", "learn"));
   }
   function learn() {

@@ -59,6 +59,47 @@ should look charming, not broken).
 
 Keep the door centred on the front (-Y) side. Under 25k triangles total.
 
+### `mill.glb`: "The Whistling Mill" (building 2)
+
+A round stone **tower windmill** with a wooden cap and four lattice sails,
+plus a small wheat field beside it. Same rules as the tavern: top-level
+`stage_01` … `stage_14`, each holding only its new pieces, each stage
+charming as the last visible one, under 25k triangles total.
+
+Footprint about **13 m wide × 9 m deep**. The origin is the **centre of the
+tower's base**; the tower (about 4.5 m across at the base, tapering, cap top
+around 9 m) stands at the origin and the field sits on the **-X side**
+(x from about -8.5 to -2.5). The door faces the front (-Y). The sails face
+the front too, hub about 7 m up, sail tips reaching about 4.5 m from the hub
+(keep the lowest tip at least 1.5 m above the ground).
+
+| Node | Adds |
+|---|---|
+| `stage_01` | Survey stakes + string in a circle for the tower, a cleared dirt patch |
+| `stage_02` | Round stone foundation plinth |
+| `stage_03` | Lower tower: stone walls up to about 3 m |
+| `stage_04` | Upper tower: tapering walls to about 6.5 m, a timber band at the top |
+| `stage_05` | Front door (rounded top) with stone steps |
+| `stage_06` | Small shuttered windows, two or three up the tower |
+| `stage_07` | Wooden gallery / balcony ring around the tower at about 3.5 m, with railing |
+| `stage_08` | Cap: a rounded wooden-shingle or thatch cap on top |
+| `stage_09` | Windshaft and hub sticking out of the cap's front |
+| `stage_10` | Sails: four lattice sails with cloth. **All sail meshes sit under one object named `sails`** whose origin is exactly on the hub; the game spins `sails` around its local front axis (Blender Y, which is Z in glTF) |
+| `stage_11` | Field: tilled soil rows on the -X side |
+| `stage_12` | Wheat: golden wheat growing in the rows (meshes named `wheat*`, the game sways them) |
+| `stage_13` | Low fence around the field with a gate, flour sacks and a small cart by the door |
+| `stage_14` | Lanterns by the door (glass in material `glow`), a weather vane on the cap, a hanging sign with a wheat sheaf |
+
+Preview renders `mill_stage_01.png` … `mill_stage_14.png`.
+
+### `miller.glb`: Wren, the second villager
+
+Same chibi build and part names as the player (`body`, `head`, `arm_l`,
+`arm_r`, `leg_l`, `leg_r`, pivots at the joints). Wren is wiry and cheerful:
+a wide straw hat, freckles, rolled sleeves, a flour-dusted apron over a
+mustard tunic, a red neck scarf. Should read clearly different from Bram and
+the player at gameplay distance (silhouette: the hat).
+
 ### Nature and props (each under 2k triangles)
 
 `tree_oak.glb`, `tree_pine.glb`, `tree_stump.glb`, `rock_large.glb`,

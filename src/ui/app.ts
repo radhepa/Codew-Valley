@@ -7,14 +7,10 @@ import type { Resource, World } from "../game/world.ts";
 import { codexBook } from "./codexbook.ts";
 import { esc, md, el } from "./md.ts";
 import { portrait } from "./portrait.ts";
+import { modelOf, nameTag, toLine, toLines, type Line } from "./speakers.ts";
 import { workbench } from "./workbench.ts";
 
 const ICON: Record<Resource, string> = { wood: "🪵", stone: "🪨" };
-
-interface Line {
-  who: "Pip" | "Bram";
-  text: string;
-}
 
 /** Everything drawn over the 3D world: HUD, dialogue, menus. */
 export class App {
@@ -29,17 +25,42 @@ export class App {
 
   constructor(private runner: PythonRunner) {}
 
+  /** The building being worked on: the first unfinished one (the last when all are done). */
   get building(): Building {
-    return BUILDINGS[0];
+    const ready = BUILDINGS.filter((b) => b.challenges.length);
+    return ready.find((b) => !this.finished(b)) ?? ready[ready.length - 1];
   }
 
-  /** The next unsolved challenge, or null when the building is finished. */
+  finished(b: Building) {
+    return b.challenges.length > 0 && b.challenges.every((c) => store.isDone(c.id));
+  }
+
+  unlocked(b: Building) {
+    const i = BUILDINGS.indexOf(b);
+    return i === 0 || this.finished(BUILDINGS[i - 1]);
+  }
+
+  buildingOf(c: Challenge) {
+    return BUILDINGS.find((b) => b.challenges.includes(c))!;
+  }
+
+  /** The next unsolved challenge, or null when every building is finished. */
   nextChallenge(): Challenge | null {
     return this.building.challenges.find((c) => !store.isDone(c.id)) ?? null;
   }
 
-  stageCount() {
-    return this.building.challenges.filter((c) => store.isDone(c.id)).length;
+  stageCount(b = this.building) {
+    return b.challenges.filter((c) => store.isDone(c.id)).length;
+  }
+
+  /** Parts built per building id, for the world. */
+  progress(): Record<string, number> {
+    return Object.fromEntries(BUILDINGS.map((b) => [b.id, this.stageCount(b)]));
+  }
+
+  /** Villagers who have arrived: at the start of their chapter, or once their building is done. */
+  private syncVillagers() {
+    for (const b of BUILDINGS) if (b.villager.arrives === "start" ? this.unlocked(b) : this.finished(b)) void this.world.showVillager(b.id);
   }
 
   attach(world: World) {
@@ -60,6 +81,7 @@ export class App {
     this.ui.append(this.questEl, res, buttons, this.promptEl);
     store.on(() => this.drawHud());
     this.drawHud();
+    this.syncVillagers();
     window.addEventListener("keydown", (e) => {
       if ((e.target as HTMLElement).closest?.("input, textarea, .cm-editor")) return;
       if (e.key === "Escape") {
@@ -83,13 +105,13 @@ export class App {
     let sub: string;
     if (!next) {
       goal = `${this.building.name} is open! 🎉`;
-      sub = "Talk to Bram at the tavern door. More of the valley is coming soon.";
+      sub = `Talk to ${this.building.villager.name}. More of the valley is coming soon.`;
     } else if (!store.canAfford(next.cost)) {
       const need: string[] = [];
       if (d.wood < next.cost.wood) need.push(`${next.cost.wood - d.wood} more wood ${ICON.wood}`);
       if (d.stone < next.cost.stone) need.push(`${next.cost.stone - d.stone} more stone ${ICON.stone}`);
       goal = `Gather ${need.join(" and ")}`;
-      sub = `For the ${next.part.toLowerCase()}. Trees are west of the tavern, rocks to the east. Press <kbd>E</kbd> next to one.`;
+      sub = `For the ${next.part.toLowerCase()}. Trees grow in the west grove, rocks in the east quarry. Press <kbd>E</kbd> next to one.`;
     } else {
       goal = `Use the rune stone: “${esc(next.title)}”`;
       sub = `You have the materials for the ${esc(next.part.toLowerCase())}. The glowing stone is beside Pip.`;
@@ -159,8 +181,8 @@ export class App {
       };
       const step = () => {
         const line = lines[i];
-        void portrait(line.who === "Pip" ? "pip" : "innkeeper").then((u) => (img.src = u));
-        who.textContent = line.who === "Pip" ? "Pip 🐍" : "Bram";
+        void portrait(modelOf(line.who)).then((u) => (img.src = u));
+        who.textContent = nameTag(line.who);
         full = line.text;
         // type the plain text, then swap in the formatted version
         const plain = full.replace(/\*\*|`/g, "");
@@ -269,19 +291,30 @@ export class App {
 
   // ---- rune stone ---------------------------------------------------------------
 
-  openRune() {
-    const b = this.building;
-    const next = this.nextChallenge();
-    const done = this.stageCount();
+  openRune(view?: Building) {
+    const b = view ?? this.building;
+    const current = b === this.building && !this.finished(b);
+    const next = current ? this.nextChallenge() : null;
+    const done = this.stageCount(b);
     const root = el(`<div class="panel modal" style="--w:720px" role="dialog" aria-label="Rune stone">
       <div class="modal-head"><span style="font-size:1.5rem">✨</span><h2>The Rune Stone · ${esc(b.name)}</h2><button class="close" aria-label="Close">✕</button></div>
       <div class="build-body">
+        <div class="building-tabs"></div>
         <p style="margin:0;color:var(--ink-soft)">${esc(b.blurb)} Each part is built by speaking Python to the stone.</p>
         <div class="stages"></div>
         <div class="next-slot"></div>
       </div>
     </div>`);
     root.querySelector(".close")!.addEventListener("click", () => this.closeModal());
+    const open = BUILDINGS.filter((x) => this.unlocked(x) && x.challenges.length);
+    const tabs = root.querySelector<HTMLElement>(".building-tabs")!;
+    if (open.length > 1) {
+      for (const x of open) {
+        const t = el<HTMLButtonElement>(`<button class="btn small ${x === b ? "amber" : "ghost"}">${this.finished(x) ? "✓ " : ""}${esc(x.name)}</button>`);
+        t.addEventListener("click", () => x !== b && this.openRune(x));
+        tabs.append(t);
+      }
+    } else tabs.remove();
     const stages = root.querySelector<HTMLElement>(".stages")!;
     b.challenges.forEach((c, i) => {
       const cls = store.isDone(c.id) ? "done" : i === done ? "next" : "";
@@ -313,7 +346,7 @@ export class App {
   }
 
   openBench(c: Challenge) {
-    const list = this.building.challenges;
+    const list = this.buildingOf(c).challenges;
     const stage = list.indexOf(c) + 1;
     this.openModal(
       workbench({
@@ -329,20 +362,43 @@ export class App {
   }
 
   private async build(c: Challenge, stage: number) {
+    const b = this.buildingOf(c);
     this.closeModal();
     store.complete(c.id, c.cost);
     this.world.paused = true;
-    this.world.buildStage(stage);
+    this.world.buildStage(b.id, stage);
     await new Promise((r) => setTimeout(r, 3300));
-    const next = this.nextChallenge();
-    const lines: Line[] = [{ who: "Pip", text: c.done }];
-    if (!next) {
-      lines.push({ who: "Bram", text: "Well I'll be! A proper tavern, built with runes. Pull up a stool, founder. First stew's on the house." });
-      lines.push({ who: "Pip", text: "That's the end of this chapter. Talk to Bram any time, and practise any part again at the rune stone." });
-    } else if (!store.canAfford(next.cost)) {
+    const lines: Line[] = [toLine(c.done)];
+    if (this.finished(b)) {
+      this.syncVillagers();
+      lines.push(...toLines(b.finale));
+      const after = BUILDINGS[BUILDINGS.indexOf(b) + 1];
+      if (!after || !after.challenges.length) lines.push({ who: "Pip", text: "That's the end of this chapter. More of the valley is coming soon. Practise any part again at the rune stone." });
+      await this.say(lines);
+      if (after?.challenges.length) await this.openChapter(after);
+      return;
+    }
+    const next = this.nextChallenge()!;
+    if (!store.canAfford(next.cost)) {
       lines.push({ who: "Pip", text: `Next up: the **${next.part.toLowerCase()}**. We'll need ${next.cost.wood ? `${next.cost.wood} wood` : ""}${next.cost.wood && next.cost.stone ? " and " : ""}${next.cost.stone ? `${next.cost.stone} stone` : ""}.` });
     } else lines.push({ who: "Pip", text: `We already have the materials for the **${next.part.toLowerCase()}**. Back to the rune stone whenever you're ready!` });
     await this.say(lines);
+  }
+
+  /** A new building's chapter begins: its villager arrives and tells their story once. */
+  private async openChapter(b: Building) {
+    this.syncVillagers();
+    if (store.data.opened.includes(b.id)) return;
+    store.data.opened.push(b.id);
+    store.changed();
+    if (b.opening.length) await this.say(toLines(b.opening));
+  }
+
+  /** After the title screen: carry on the story where the save left it. */
+  resume() {
+    const b = this.building;
+    if (this.unlocked(b) && BUILDINGS.indexOf(b) > 0 && !store.data.opened.includes(b.id) && b.challenges.length) void this.openChapter(b);
+    else this.world.paused = false;
   }
 
   // ---- characters -------------------------------------------------------------
@@ -352,7 +408,7 @@ export class App {
     const d = store.data;
     if (!next) {
       void this.say([
-        { who: "Pip", text: "We did it! The Sleepy Serpent is open, and you speak the Old Tongue now." },
+        { who: "Pip", text: `We did it! ${this.building.name} is finished, and your Python grows stronger every day.` },
         { who: "Pip", text: "There's so much more of the valley to build. For now, rest your fingers. And maybe reread the Codex with a mug of cider." },
       ]);
       return;
@@ -371,11 +427,11 @@ export class App {
     void this.say(lines);
   }
 
-  talkBram() {
-    void this.say([
-      { who: "Bram", text: "Welcome to The Sleepy Serpent! Mind the step, I made it myself. Well, you did." },
-      { who: "Bram", text: "Pip tells me there's a whole village waiting to be built. Wherever there's a village, there's thirsty builders. I'll keep the stew warm." },
-    ]);
+  talkVillager(id: string) {
+    const b = BUILDINGS.find((x) => x.id === id);
+    if (!b) return;
+    const lines = toLines(this.finished(b) ? b.chatAfter : b.chatDuring);
+    void this.say(lines.length ? lines : [{ who: b.villager.name, text: "Lovely day for building, isn't it?" }]);
   }
 
   // ---- start ------------------------------------------------------------------

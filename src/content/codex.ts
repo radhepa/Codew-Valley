@@ -250,6 +250,344 @@ print(not night)`, out: "False\nTrue\nFalse" },
     ],
   },
   {
+    id: "comparisons",
+    title: "Comparing values",
+    summary: "== != < > <= >=, = vs ==, and comparing text.",
+    blocks: [
+      { p: "A **comparison** asks Python a yes-or-no question. The answer is always `True` or `False`." },
+      { code: r`wind = 14
+print(wind > 10)
+print(wind == 14)
+print(wind != 14)
+print(wind <= 13)`, out: "True\nTrue\nFalse\nFalse" },
+      { p: "The six comparison operators: `==` equal, `!=` not equal, `<` less than, `>` greater than, `<=` less than or equal, `>=` greater than or equal." },
+      { tip: "Say them out loud: `>=` is \"at least\", `<=` is \"at most\". \"10 or more\" is `>= 10`, but \"more than 10\" is `> 10`. That one-number difference is the most common bug in the valley." },
+      { h: "= stores, == compares" },
+      { p: "One `=` puts a value in a variable. Two `==` asks whether two values are equal. Mixing them up inside an `if` is a `SyntaxError`:" },
+      { code: r`wind = 10
+if wind = 10:
+    print("Ten!")`, err: "SyntaxError" },
+      { p: "A comparison is a value of its own, so you can store it:" },
+      { code: r`stakes = 8
+ring_done = stakes == 8
+print(ring_done)`, out: "True" },
+      { h: "Comparing text" },
+      { p: "Strings can be compared with `==` too, but every character must match, **capitals included**. Tidy text with `.strip()` and `.lower()` before comparing:" },
+      { code: r`word = "Wheat"
+print(word == "wheat")
+print(word.lower() == "wheat")
+spoken = "  WHEAT "
+print(spoken.strip().lower() == "wheat")`, out: "False\nTrue\nTrue" },
+      { p: "`<` and `>` on strings compare in dictionary order:" },
+      { code: r`print("apple" < "barley")`, out: "True" },
+      { h: "Numbers and text are never equal" },
+      { p: "The number `5` and the text `\"5\"` are different things, so `==` says `False`. And asking which is bigger is an error:" },
+      { code: r`print(5 == "5")`, out: "False" },
+      { code: r`print(5 < "6")`, err: "TypeError" },
+    ],
+  },
+  {
+    id: "if",
+    title: "if: making a decision",
+    summary: "Run some lines only when a condition is True.",
+    blocks: [
+      { p: "An **if statement** lets your program choose. If the condition is `True`, the indented lines under it run. If it's `False`, Python skips them." },
+      { code: r`stone = 12
+if stone >= 10:
+    print("Enough stone!")
+print("Done checking.")`, out: "Enough stone!\nDone checking." },
+      { p: "Change the stone and the indented line is skipped, but the last line still runs, because it isn't indented:" },
+      { code: r`stone = 4
+if stone >= 10:
+    print("Enough stone!")
+print("Done checking.")`, out: "Done checking." },
+      { h: "The parts of an if" },
+      { p: "`if`, then a condition, then a **colon** `:`. The lines that belong to the if go underneath, each indented by **four spaces**. That indented group is called a **block**." },
+      { p: "A block can hold as many lines as you like, including ones that change variables:" },
+      { code: r`stone = 12
+needed = 10
+if stone >= needed:
+    print("Laying the plinth.")
+    stone = stone - needed
+print(f"Stone left: {stone}")`, out: "Laying the plinth.\nStone left: 2" },
+      { h: "Forgetting the colon" },
+      { p: "Without the colon, Python stops with `expected ':'`:" },
+      { code: r`wind = 12
+if wind > 10
+    print("Windy!")`, err: "SyntaxError" },
+      { tip: "Read an if out loud: \"if stone is at least needed, then...\". The colon is the \"then\"." },
+    ],
+  },
+  {
+    id: "else-elif",
+    title: "else and elif",
+    summary: "Two choices with else, many choices with elif. Order matters.",
+    blocks: [
+      { p: "`else:` gives the if a second path. It has **no condition**: it runs whenever the if's condition was `False`. Exactly one of the two blocks runs." },
+      { code: r`hours = 2
+if hours >= 4:
+    print("Stack the stones.")
+else:
+    print("Wait for the mortar.")`, out: "Wait for the mortar." },
+      { p: "`else:` lines up with its `if` (same indentation), and its own lines are indented under it." },
+      { h: "elif: more than two choices" },
+      { p: "`elif` means \"else, if\". Python checks each condition from the top and runs only the **first** block whose condition is `True`. Everything after that is skipped. The final `else` catches whatever is left." },
+      { code: r`wind = 18
+if wind >= 30:
+    print("Too windy!")
+elif wind >= 15:
+    print("Work inside.")
+else:
+    print("Raise the band.")`, out: "Work inside." },
+      { h: "Order matters" },
+      { p: "Because only the first True branch runs, put the most specific (or most extreme) case first. Here a gale of 35 stops at the first check, which is the wrong one:" },
+      { code: r`wind = 35
+if wind >= 15:
+    print("Work inside.")
+elif wind >= 30:
+    print("Too windy!")`, out: "Work inside." },
+      { h: "elif vs separate ifs" },
+      { p: "Two separate `if`s are two separate questions, and both can run. Use `elif` when only **one** answer should happen:" },
+      { code: r`wind = 35
+if wind >= 30:
+    print("Too windy!")
+if wind >= 15:
+    print("Work inside.")`, out: "Too windy!\nWork inside." },
+      { h: "Choosing a value" },
+      { p: "Branches can set a variable, then you use it afterwards. Handy for getting a word just right:" },
+      { code: r`n = 1
+if n == 1:
+    word = "sack"
+else:
+    word = "sacks"
+print(f"{n} {word}")`, out: "1 sack" },
+      { tip: "Python spells it `elif`. Writing `else if` is a `SyntaxError`, and so is giving `else` a condition." },
+      { code: r`x = 5
+if x > 9:
+    print("big")
+else if x > 3:
+    print("medium")`, err: "SyntaxError" },
+    ],
+  },
+  {
+    id: "logic",
+    title: "and, or, not",
+    summary: "Combine conditions, flip them, and avoid the or trap.",
+    blocks: [
+      { p: "`and` is `True` only when **both** sides are True. `or` is `True` when **at least one** side is. `not` flips True and False." },
+      { code: r`raining = False
+wind = 30
+print(raining or wind > 25)
+print(raining and wind > 25)
+print(not raining)`, out: "True\nFalse\nTrue" },
+      { p: "They are most useful inside an if:" },
+      { code: r`hour = 19
+candles = 3
+if hour >= 18 and candles > 0:
+    print("Light a candle.")`, out: "Light a candle." },
+      { h: "not" },
+      { p: "`if not ready:` reads like English and runs when `ready` is False. `not` happens before `and`, and `and` before `or`. Use brackets to make your meaning clear:" },
+      { code: r`print(not True and False)
+print(not (True and False))`, out: "False\nTrue" },
+      { code: r`railing_done = True
+boards = 10
+ready = railing_done and boards >= 16
+if not ready:
+    print("Keep off!")`, out: "Keep off!" },
+      { h: "The or trap" },
+      { p: "Each side of `or` must be a whole condition. This looks right but is not:" },
+      { code: r`sky = "sunny"
+if sky == "rainy" or "stormy":
+    print("Lanterns lit")`, out: "Lanterns lit" },
+      { p: "Python reads it as `(sky == \"rainy\") or (\"stormy\")`, and a non-empty string counts as True (see **Truthiness**). Repeat the comparison on both sides:" },
+      { code: r`sky = "sunny"
+if sky == "rainy" or sky == "stormy":
+    print("Lanterns lit")
+else:
+    print("Lanterns out")`, out: "Lanterns out" },
+      { tip: "Same with and: write `hour >= 18 and candles > 0`, never `hour >= 18 and > 0`." },
+    ],
+  },
+  {
+    id: "in",
+    title: "in: looking inside text",
+    summary: "\"tar\" in cart, not in, and the substring surprise.",
+    blocks: [
+      { p: "`in` checks whether one piece of text appears **anywhere inside** another. `not in` asks the opposite." },
+      { code: r`cart = "shingles, nails, rope"
+print("nails" in cart)
+print("tar" in cart)
+print("tar" not in cart)`, out: "True\nFalse\nTrue" },
+      { p: "It is great in an if:" },
+      { code: r`cart = "oats, honey"
+if "honey" in cart:
+    print("Sweet!")`, out: "Sweet!" },
+      { h: "Capitals matter" },
+      { code: r`cart = "shingles, nails, rope"
+print("Nails" in cart)
+print("nails" in cart.lower())`, out: "False\nTrue" },
+      { h: "The substring surprise" },
+      { p: "`in` looks for the **letters**, not whole words. \"star\" has \"tar\" hiding inside it:" },
+      { code: r`print("tar" in "star anise")`, out: "True" },
+      { tip: "`in` works on lists too, and there it does match whole items. You'll meet lists at the Market Square." },
+    ],
+  },
+  {
+    id: "nested-if",
+    title: "Nested ifs",
+    summary: "An if inside an if, and which else belongs to which.",
+    blocks: [
+      { p: "A block can contain another if. The inner question is only asked when the outer one was True. That's a **nested if**." },
+      { code: r`brake_on = False
+grease = 1
+if not brake_on:
+    if grease >= 2:
+        print("Turns smoothly.")
+    else:
+        print("Squeak!")
+else:
+    print("Brake is on.")`, out: "Squeak!" },
+      { p: "Look at the indentation levels: the outer `if`/`else` start at the edge, the inner `if`/`else` are 4 spaces in, and the inner prints are 8 spaces in." },
+      { h: "Which if does an else belong to?" },
+      { p: "An `else` belongs to the `if` it lines up with. Move it and the meaning changes completely. Here the else belongs to the **outer** if, so with grease 1 nothing prints at all:" },
+      { code: r`brake_on = False
+grease = 1
+if not brake_on:
+    if grease >= 2:
+        print("Turns smoothly.")
+else:
+    print("Squeak!")`, out: "" },
+      { tip: "Nesting is great when one question only makes sense after another. If the levels get deep, an `and` or an `elif` chain is often flatter and easier to read." },
+    ],
+  },
+  {
+    id: "truthiness",
+    title: "Truthiness and even numbers",
+    summary: "0 and \"\" count as False; % 2 tells even from odd.",
+    blocks: [
+      { p: "An if doesn't need a comparison. Any value can be used as a condition. `0`, `0.0` and the empty string `\"\"` count as **False**; every other number and string counts as **True**. `bool()` shows you how a value counts:" },
+      { code: r`print(bool(0))
+print(bool(7))
+print(bool(""))
+print(bool("Pip"))`, out: "False\nTrue\nFalse\nTrue" },
+      { p: "So `if helper:` means \"if there is a helper\":" },
+      { code: r`helper = ""
+if helper:
+    print(f"{helper} holds the ladder.")
+else:
+    print("Nobody holds the ladder.")`, out: "Nobody holds the ladder." },
+      { h: "Don't compare with True" },
+      { p: "A name is truthy, but it is not **equal** to `True`:" },
+      { code: r`helper = "Pip"
+print(helper == True)
+print(bool(helper))`, out: "False\nTrue" },
+      { p: "Just write `if helper:`, never `if helper == True:`." },
+      { h: "Even or odd" },
+      { p: "`%` gives the remainder of a division. Even numbers leave remainder 0 when divided by 2, odd numbers leave 1:" },
+      { code: r`print(6 % 2)
+print(7 % 2)`, out: "0\n1" },
+      { code: r`cloths = 7
+if cloths % 2 == 0:
+    print("Even")
+else:
+    print("Odd")`, out: "Odd" },
+      { tip: "The same trick works for any \"every Nth\": `day % 7 == 0` is True on every seventh day." },
+    ],
+  },
+  {
+    id: "chained",
+    title: "Chained comparisons",
+    summary: "Check a range in one go: 30 <= x <= 60.",
+    blocks: [
+      { p: "To check that a value is between two others, Python lets you **chain** comparisons, just like in maths:" },
+      { code: r`moisture = 45
+print(30 <= moisture <= 60)
+print(30 <= 75 <= 60)`, out: "True\nFalse" },
+      { p: "`30 <= x <= 60` means exactly the same as `30 <= x and x <= 60`:" },
+      { code: r`x = 45
+print(30 <= x and x <= 60)`, out: "True" },
+      { h: "Is the edge included?" },
+      { p: "`<=` includes the edge, `<` doesn't. Pick carefully when the task says \"from 30 to 60\":" },
+      { code: r`x = 30
+print(30 < x < 60)
+print(30 <= x <= 60)`, out: "False\nTrue" },
+      { h: "A chain that doesn't mean what it looks like" },
+      { p: "Keep the variable in the **middle**. This one really means `x >= 30 and 30 <= 60`, so any big number passes:" },
+      { code: r`x = 99
+print(x >= 30 <= 60)`, out: "True" },
+      { tip: "Write ranges small-to-big, left-to-right: `low <= x <= high`. It reads like a number line." },
+    ],
+  },
+  {
+    id: "min-max",
+    title: "min, max, abs and round",
+    summary: "Built-in helpers for deciding with numbers.",
+    blocks: [
+      { p: "`min()` gives the smallest of its values and `max()` the biggest. They take as many values as you like." },
+      { code: r`print(min(12, 9))
+print(max(14.6, 11.2, 13.9))`, out: "9\n14.6" },
+      { p: "`min` is perfect for limits: you can only sell what you have, so `sold = min(wanted, stock)`." },
+      { code: r`wanted = 12
+stock = 8
+sold = min(wanted, stock)
+print(sold)`, out: "8" },
+      { h: "abs: distance from zero" },
+      { p: "`abs()` drops the minus sign. Use it for \"how far apart\", when you don't care which is bigger:" },
+      { code: r`print(abs(-4))
+print(abs(4))
+print(abs(11 - 13))`, out: "4\n4\n2" },
+      { h: "round" },
+      { p: "`round(x)` rounds to a whole number. `round(x, 1)` keeps 1 decimal place." },
+      { code: r`print(round(13.2333, 1))
+print(round(7.8))`, out: "13.2\n8" },
+      { p: "Brackets first when you take an average, then round:" },
+      { code: r`a = 14.6
+b = 11.2
+c = 13.9
+average = round((a + b + c) / 3, 1)
+print(average)`, out: "13.2" },
+      { h: "Deciding with them" },
+      { code: r`target = 13
+average = 11.2
+off_by = round(abs(average - target), 1)
+if off_by <= 1:
+    print("On time")
+else:
+    print(f"Off by {off_by}")`, out: "Off by 1.8" },
+      { tip: "Halfway numbers round to the nearest **even** number: `round(2.5)` is 2 and `round(3.5)` is 4. Python does this on purpose so totals don't drift upward." },
+      { code: r`print(round(2.5))
+print(round(3.5))`, out: "2\n4" },
+    ],
+  },
+  {
+    id: "indentation",
+    title: "Indentation",
+    summary: "How Python knows which lines belong inside an if.",
+    blocks: [
+      { p: "The spaces at the start of a line are called **indentation**. Python uses them to know which lines belong to an if (or an else, or an elif). Indented lines are inside; the first line back at the edge is outside again." },
+      { code: r`x = 5
+if x > 3:
+    print("inside")
+    print("also inside")
+print("outside")`, out: "inside\nalso inside\noutside" },
+      { p: "The usual indent is **four spaces**. In the workbench, the Tab key puts in four spaces for you." },
+      { h: "A colon needs an indented block" },
+      { p: "Every line that ends in `:` must be followed by at least one indented line:" },
+      { code: r`if True:
+print("hi")`, err: "IndentationError" },
+      { h: "Indenting where you shouldn't" },
+      { p: "A line indented for no reason is an \"unexpected indent\":" },
+      { code: r`print("a")
+    print("b")`, err: "IndentationError" },
+      { h: "Lining up" },
+      { p: "All lines in one block must start at the same column. Going back out must land exactly on an earlier level:" },
+      { code: r`if True:
+    print("a")
+  print("b")`, err: "IndentationError" },
+      { tip: "Colons and indents come in pairs: a line ending with `:` opens a block, and the block ends where the indentation goes back. Mixing tabs and spaces confuses Python too (a `TabError`), so stick to spaces." },
+    ],
+  },
+  {
     id: "errors",
     title: "Reading error messages",
     summary: "What NameError, SyntaxError, TypeError and friends mean.",
@@ -268,7 +606,7 @@ print(not night)`, out: "False\nTrue\nFalse" },
       { p: "The type is right but the value is not, such as `int(\"ten\")`." },
       { code: r`int("ten")`, err: "ValueError" },
       { h: "IndentationError" },
-      { p: "A line starts with spaces where it should not (or does not where it should). For now, start every line at the very left edge." },
+      { p: "A line starts with spaces where it should not, or does not where it should. Lines inside an if are indented four spaces; every other line starts at the left edge. See **Indentation**." },
       { code: r`print("a")
     print("b")`, err: "IndentationError" },
       { h: "IndexError" },

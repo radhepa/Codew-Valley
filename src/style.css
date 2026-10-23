@@ -875,3 +875,14 @@ pre.out.err-out {
     height: 64px;
   }
 }
+
+/* rune stone: switch between unlocked buildings */
+.building-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.btn.small {
+  font-size: 0.9rem;
+  padding: 6px 12px;
+}
