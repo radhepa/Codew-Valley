@@ -2,6 +2,7 @@ import * as THREE from "three";
 import { model, preload, realModels } from "./models.ts";
 import { Particles } from "./particles.ts";
 import { Animator, SWING, lineup, type AnimName } from "./anim.ts";
+import { Blinker } from "./blink.ts";
 import { sfx } from "./audio.ts";
 import { ATMOS, WEATHER_U, addWeather, createComposer, createHills, createMeadow, createSky } from "./atmosphere.ts";
 import { Weather } from "./weather.ts";
@@ -328,6 +329,7 @@ export class World {
   /** When each villager last waved hello. */
   private greeted = new Map<string, number>();
   private pip!: THREE.Object3D;
+  private pipEyes: Blinker | null = null;
   private villagers = new Map<string, THREE.Object3D>();
   private sites = new Map<string, { root: THREE.Object3D; stages: THREE.Object3D[]; shown: number; lights: THREE.PointLight[]; glow: THREE.MeshStandardMaterial[] }>();
   /** Named moving parts from the building specs (sails, clock hands, gears, bellows). */
@@ -609,6 +611,7 @@ export class World {
     this.pip.position.copy(PIP_POS);
     this.pip.scale.setScalar(1.6);
     this.scene.add(this.pip);
+    this.pipEyes = Blinker.on(this.pip.getObjectByName("pip_head"));
     this.npcs.push({ id: "pip", obj: this.pip, pos: PIP_POS, radius: 0.5, label: "Talk to Pip" });
     this.colliders.push({ x: PIP_POS.x, z: PIP_POS.z, r: 0.45 });
   }
@@ -1090,6 +1093,10 @@ export class World {
         head.position.y = (head.userData.y ??= head.position.y) + Math.sin(t * 2.2) * 0.03;
         head.rotation.z = Math.sin(t * 1.3) * 0.12;
       }
+      // Pip blinks, and blinks again on turning to the player
+      if (near !== this.pip.userData.near) this.pipEyes?.blink();
+      this.pip.userData.near = near;
+      this.pipEyes?.update(dt);
       for (let i = 1; i <= 8; i++) {
         const s = this.pip.getObjectByName(`seg_${String(i).padStart(2, "0")}`);
         if (s) s.scale.setScalar(1 + Math.sin(t * 2.2 - i * 0.5) * 0.04);

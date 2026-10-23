@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { model, preload, realModels } from "./models.ts";
+import { Blinker } from "./blink.ts";
 
 // Character animation. The models have no skeleton: each character is a `body` (origin on the
 // ground) with `head`, `arm_l`, `arm_r`, `leg_l` and `leg_r` children pivoting at their joints
@@ -18,7 +19,7 @@ type ArmName = "arm_l" | "arm_r";
 
 export type LoopName = "idle" | "talk" | "cast";
 export type ClipName = "chop" | "mine" | "pickup" | "wave" | "celebrate" | "stretch" | "happy" | "fidget";
-export type AnimName = LoopName | ClipName | "walk" | "run";
+export type AnimName = LoopName | ClipName | "walk" | "run" | "blink";
 
 /** When the tool lands (seconds into the swing) and how long a swing lasts; the world syncs hits to these. */
 /** Tools are drawn a little bigger than life so they read from the game camera. */
@@ -519,6 +520,8 @@ export class Animator {
   private tools = new Map<string, THREE.Object3D>();
   private tool: { name: string; t: number; idle: number } | null = null;
   private queued: { name: AnimName; at: number; big: boolean } | null = null;
+  /** The character's eyes (blink.ts); null for a model without house eyes. */
+  readonly eyes: Blinker | null;
 
   constructor(readonly root: THREE.Object3D, readonly id: string) {
     this.style = STYLES[id] ?? BASE;
@@ -528,6 +531,7 @@ export class Animator {
     }
     this.hipY = this.joints.leg_l?.p.y ?? 0.36;
     this.size = this.hipY / 0.36;
+    this.eyes = Blinker.on(this.joints.head?.o);
   }
 
   /** What the character is doing right now. */
@@ -541,6 +545,10 @@ export class Animator {
 
   /** Play an animation: a loop (idle, talk, cast; walk/run in place) or a one-shot clip. */
   play(name: AnimName, opts: { big?: boolean; aim?: number } = {}) {
+    if (name === "blink") {
+      this.eyes?.blink(true);
+      return;
+    }
     if (name === "walk" || name === "run") {
       this.forceMove = name;
       return;
@@ -654,6 +662,15 @@ export class Animator {
 
     this.apply(O);
     this.updateTool(dt);
+
+    // eyes: people blink as the head starts a big turn; shut through a stretch, ^ ^ when happy
+    if (this.eyes) {
+      if (Math.abs(goal - this.look) > 0.4) this.eyes.blink();
+      const n = this.action?.name;
+      const t = this.action?.t ?? 0;
+      const happy = n === "happy" ? env(t, 0.12, 1.35, 0.1) : n === "celebrate" ? env(t, 0.32, 1.6, 0.1) : 0;
+      this.eyes.update(dt, n === "stretch" ? env(t, 0.45, 2.1, 0.12) : 0, happy);
+    }
   }
 
   private limitArms(P: Pose) {
