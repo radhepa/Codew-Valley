@@ -6,12 +6,15 @@
 //   npm test -- dock market   only these buildings' challenges and Codex pages
 //   npm test -- dock -v       also print why each listed mistake fails
 //   npm test -- life          only the village runes (src/life)
+//   npm test -- review        only Wren's practice questions (src/life/review), 20 seeds each
+//   npm test -- review:mk-    only the question templates whose id starts with mk-
 import { loadPyodide } from "pyodide";
 import { HELPER } from "../src/python/helper.ts";
 import { CODEX, codexById, PAGES_BY_BUILDING } from "../src/content/codex.ts";
 import { BUILDINGS } from "../src/content/index.ts";
 import { PEOPLE, personById } from "../src/content/people/index.ts";
 import { LIFE_RUNES } from "../src/life/runes.ts";
+import { TEMPLATES, makeQuestion } from "../src/life/review/question.ts";
 
 const py = await loadPyodide();
 let out = "";
@@ -57,7 +60,7 @@ function check(code, tests, files) {
 
 // Building filter from the command line (anything that isn't a flag).
 const only = process.argv.slice(2).filter((a) => !a.startsWith("-"));
-for (const id of only) if (id !== "life" && !BUILDINGS.some((b) => b.id === id)) throw new Error(`No building "${id}". Try one of: ${BUILDINGS.map((b) => b.id).join(", ")}, life`);
+for (const id of only) if (id !== "life" && !id.startsWith("review") && !BUILDINGS.some((b) => b.id === id)) throw new Error(`No building "${id}". Try one of: ${BUILDINGS.map((b) => b.id).join(", ")}, life`);
 const wanted = (id) => !only.length || only.includes(id);
 /** Parts in each building's model (art/specs): one challenge per part. */
 const STAGES = { tavern: 12, mill: 14, dock: 12, market: 14, bakery: 14, forge: 15, library: 14, apothecary: 14, townhall: 14, clocktower: 14, guildhall: 16, observatory: 16 };
@@ -147,6 +150,76 @@ for (const r of LIFE_RUNES) {
   const at = BUILDINGS.findIndex((b) => b.id === r.requires);
   if (at < 0) fail(`life/${r.id}`, `requires "${r.requires}", which is not a building`);
   else if (!only.length || only.includes("life")) checkChallenge(`life/${r.id}`, r, at);
+}
+
+// Wren's daily practice (src/life/review): every question template, built with 20 seeds.
+// The solution passes, the starter, every listed mistake and a typed-in copy of the output
+// fail (without tripping the checker), a seed always builds the same question, the task and
+// hints never give away the output, and nothing uses Python its buildings haven't taught.
+const reviewArgs = only.filter((a) => a.startsWith("review"));
+if (!only.length || reviewArgs.length) {
+  const prefixes = reviewArgs.map((a) => a.slice("review:".length)).filter(Boolean);
+  const order = BUILDINGS.map((b) => b.id);
+  // [pattern, first building that teaches it]; strings and comments are blanked first
+  const TAUGHT = [
+    [/\bif\b/, "mill"], [/\bwhile\b|\bbreak\b|\bcontinue\b|\bimport random\b/, "dock"],
+    [/\.(append|sort|pop|insert|remove|index)\(|\bsorted\(|\bsum\(/, "market"],
+    [/\bfor\b|\brange\(|\benumerate\(|\bzip\(/, "bakery"], [/\bdef\b|\breturn\b/, "forge"],
+    [/\{|\.(items|keys|values|get)\(|\bdel\b/, "library"],
+    [/\.(split|join)\(|\btry\b|\bexcept\b|\braise\b|\bset\(/, "apothecary"],
+    [/\bopen\(|\bwith\b|\bimport csv\b/, "townhall"],
+    [/\bmath\b|\bdatetime\b|\bdivmod\(|\[[^\n]*\bfor\b|=[^\n]*\bif\b[^\n]*\belse\b|random\.(choice|shuffle|sample)/, "clocktower"],
+    [/\bclass\b|\bisinstance\(|\bsuper\(/, "guildhall"], [/\byield\b|\blambda\b|\bnext\(/, "observatory"],
+  ];
+  const bare = (code) => code.replace(/"""[\s\S]*?"""|"(?:[^"\\\n]|\\.)*"|'(?:[^'\\\n]|\\.)*'/g, '""').replace(/#.*$/gm, "");
+  const tids = new Set();
+  for (const t of TEMPLATES) {
+    const where = `review/${t.id}`;
+    if (tids.has(t.id)) fail(where, "duplicate template id");
+    tids.add(t.id);
+    if (prefixes.length && !prefixes.some((p) => t.id.startsWith(p))) continue;
+    count++;
+    if (!t.topics.length || t.topics.some((id) => !order.includes(id))) fail(where, `topics ${JSON.stringify(t.topics)} must be building ids`);
+    if (![1, 2, 3].includes(t.difficulty)) fail(where, "difficulty must be 1, 2 or 3");
+    const at = Math.max(...t.topics.map((id) => order.indexOf(id)));
+    for (let seed = 1; seed <= 20; seed++) {
+      const w = `${where}@${seed}`;
+      let q;
+      try {
+        q = makeQuestion(t, seed);
+      } catch (e) {
+        fail(w, `make() threw ${e.message}`);
+        continue;
+      }
+      if (JSON.stringify(makeQuestion(t, seed)) !== JSON.stringify(q)) fail(w, "the same seed built a different question");
+      const m = q.made;
+      if (!m.title || !m.topic || !m.task.length) fail(w, "needs a title, a topic and a task");
+      if (m.hints.length !== 3 || m.hints.some((h) => !h.trim())) fail(w, "needs exactly three hints");
+      if (m.wrong.length < 2) fail(w, "needs at least two wrong answers");
+      for (const p of m.codex ?? []) if (!codexById.has(p)) fail(w, `unknown codex page ${p}`);
+      for (const [code, what] of [[m.solution, "solution"], [m.starter, "starter"], ...m.wrong.map((x, i) => [x, `wrong#${i}`])])
+        for (const [re, home] of TAUGHT) if (order.indexOf(home) > at && re.test(bare(code))) fail(w, `${what} uses ${re.exec(bare(code))[0].trim()}, taught at the ${home}`);
+      count++;
+      const sol = check(m.solution, m.tests, m.files);
+      if (!sol.passed) {
+        fail(`${w} solution`, `fails: ${sol.status} ${sol.type ?? ""} ${sol.message ?? ""} ${sol.feedback}`);
+        continue;
+      }
+      // the task and hints describe the output; they never print it
+      const said = [...m.task, ...m.hints].join("\n");
+      const printed = exec(m.solution, m.files).output.trim();
+      for (const line of [printed, ...printed.split("\n")].map((l) => l.trim()))
+        if (line.length >= 3 && !/^(True|False|None)$/.test(line) && said.includes(line)) fail(w, `the task or a hint gives away the output ${JSON.stringify(line)}`);
+      const fakes = m.drives || !printed ? [] : [m.starter + printed.split("\n").map((l) => `print(${JSON.stringify(l)})`).join("\n") + "\n"];
+      for (const [code, what] of [[m.starter, "starter"], ...m.wrong.map((x, i) => [x, `wrong#${i}`]), ...fakes.map((x) => [x, "typed-in output"])]) {
+        count++;
+        const res = check(code, m.tests, m.files);
+        if (res.passed) fail(`${w} ${what}`, "passes but should fail");
+        else if (res.feedback.startsWith("The rune-checker tripped")) fail(`${w} ${what}`, `checker crashed: ${res.feedback}`);
+        else if (process.argv.includes("-v") && seed === 1) console.log(`  ${w} ${what}: ${res.status === "error" ? res.type + ": " + res.message : res.feedback}`);
+      }
+    }
+  }
 }
 
 // Villagers: every profile is complete, and every building's villager has one.

@@ -23,6 +23,7 @@ import type { LifeApp, LifeRune } from "../life/context.ts";
 import { bagSheet, giftPicker, itemIcon } from "../life/bagbook.ts";
 import { canGift, give, knownLoves } from "../life/gifts.ts";
 import { villageChat } from "../life/cooking/pantry.ts";
+import { wrenOffer } from "../life/review/index.ts";
 import { item } from "../life/items.ts";
 import { markRune, runeSolved } from "../life/save.ts";
 
@@ -581,7 +582,9 @@ export class App {
     if (!q) {
       // a gift can follow any chat that doesn't end in a question
       const gift = canGift(p.id) ? [{ label: "Give a gift", cls: "gold", action: () => this.openGift(p) }, { label: "Goodbye", cls: "quiet", action: () => {} }] : undefined;
-      await this.say(lines, gift);
+      // Wren offers her daily question (src/life/review)
+      const offer = wrenOffer(p.id);
+      await this.say(lines, offer ? [offer, ...(gift ?? [{ label: "Goodbye", cls: "quiet", action: () => {} }])] : gift);
       this.heartToast(talk);
       return;
     }

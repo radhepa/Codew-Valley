@@ -1,0 +1,296 @@
+/* Wren's daily practice: the Sharpness page and the basket card (field-journal style, tokens from style.css). */
+
+/* ---- the Sharpness page ---- */
+.sharp {
+  --w: 880px;
+}
+.sharp-body {
+  padding: 16px 26px 22px;
+  overflow: auto;
+}
+.sharp-note {
+  margin: 0 0 14px;
+  font-family: var(--display);
+  font-style: italic;
+  font-variation-settings: "opsz" 24;
+  color: var(--ink-2);
+  font-size: 1rem;
+  line-height: 1.45;
+}
+.sharp-note b {
+  font-style: normal;
+  font-family: var(--font);
+  font-weight: 700;
+  color: var(--rune-deep);
+}
+.sharp-bed {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px;
+  /* a ruled seed-bed under the pots */
+  padding: 10px;
+  border-radius: 12px;
+  background: repeating-linear-gradient(0deg, transparent 0 27px, rgba(138, 124, 106, 0.12) 27px 28px), var(--paper-2);
+  border: 1px solid var(--rule);
+}
+.sharp-plot {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  align-content: start;
+  gap: 2px;
+  padding: 8px 8px 10px;
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+  text-align: center;
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
+  animation: plotIn 0.4s cubic-bezier(0.2, 0.8, 0.3, 1.15) both;
+  animation-delay: calc(var(--i, 0) * 35ms);
+}
+.sharp-plot:hover {
+  transform: translateY(-2px);
+  border-color: var(--ink-3);
+  box-shadow: 0 6px 16px rgba(42, 36, 29, 0.12);
+}
+.sharp-plot:hover .plant {
+  transform: rotate(-2deg);
+}
+@keyframes plotIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+.sharp-plot .plant {
+  width: 92px;
+  height: 103px;
+  transition: transform 0.4s cubic-bezier(0.3, 1.6, 0.5, 1);
+  transform-origin: 50% 90%;
+}
+.sharp-plot .name {
+  font-family: var(--display);
+  font-variation-settings: "opsz" 30;
+  font-weight: 600;
+  font-size: 0.98rem;
+  line-height: 1.15;
+}
+.sharp-plot .plant-name {
+  font-size: 0.72rem;
+  color: var(--ink-3);
+  line-height: 1.3;
+}
+.sharp-plot .plant-name span {
+  font-family: var(--mono);
+  font-size: 0.66rem;
+}
+.sharp-plot .state {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+  font-size: 0.76rem;
+  font-weight: 750;
+}
+.sharp-plot .state .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--moss);
+}
+.sharp-plot.fine .state .dot {
+  background: #9aa553;
+}
+.sharp-plot.due .state {
+  color: var(--gold-deep);
+}
+.sharp-plot.due .state .dot {
+  background: var(--gold);
+}
+.sharp-plot.wilt .state {
+  color: var(--ember);
+}
+.sharp-plot.wilt .state .dot {
+  background: #b08a55;
+}
+.sharp-plot .roots {
+  display: flex;
+  gap: 3px;
+  margin-top: 3px;
+}
+.sharp-plot .roots i {
+  width: 9px;
+  height: 5px;
+  border-radius: 9px 0;
+  border: 1px solid var(--ink-3);
+  opacity: 0.55;
+}
+.sharp-plot .roots i.on {
+  background: var(--moss);
+  border-color: var(--moss);
+  opacity: 0.9;
+}
+.sharp-plot .when {
+  font-size: 0.68rem;
+  color: var(--ink-3);
+}
+.sharp-plot.unplanted {
+  cursor: default;
+  background: transparent;
+  border-style: dashed;
+  color: var(--ink-3);
+}
+.sharp-plot.unplanted:hover {
+  transform: none;
+  box-shadow: none;
+  border-color: var(--rule);
+}
+.sharp-plot.unplanted .state {
+  font-weight: 600;
+}
+.sharp-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+  margin-top: 16px;
+}
+.sharp-foot .label {
+  margin: 0;
+}
+.sharp-foot .btn {
+  margin-left: auto;
+}
+.sharp-foot .small {
+  margin: 0;
+  color: var(--ink-2);
+  font-size: 0.86rem;
+}
+.sharp-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.sharp-chip {
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--gold);
+  background: rgba(214, 177, 106, 0.16);
+  color: var(--gold-deep);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+/* ---- the basket card ---- */
+.basket-card {
+  position: fixed;
+  left: 50%;
+  top: 84px; /* under the toasts, clear of the dialogue box */
+  transform: translateX(-50%);
+  min-width: 260px;
+  max-width: calc(100vw - 36px);
+  padding: 14px 18px 14px;
+  cursor: pointer;
+  animation: basketIn 0.45s cubic-bezier(0.2, 0.9, 0.3, 1.25);
+  transition: opacity 0.4s, transform 0.4s;
+  z-index: 30;
+}
+.basket-card.away {
+  opacity: 0;
+  transform: translate(-50%, -14px) scale(0.96);
+}
+@keyframes basketIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -20px) scale(0.92);
+  }
+}
+.basket-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.basket-head .eyebrow {
+  color: var(--gold);
+}
+.basket-head b {
+  font-family: var(--display);
+  font-weight: 560;
+  font-size: 1.06rem;
+}
+.basket-ico {
+  width: 34px;
+  height: 34px;
+  color: var(--gold);
+  animation: basketHop 0.9s ease-out 0.2s;
+  transform-origin: 50% 90%;
+}
+@keyframes basketHop {
+  20% {
+    transform: scale(1.12, 0.86);
+  }
+  45% {
+    transform: scale(0.94, 1.1) translateY(-3px);
+  }
+  70% {
+    transform: scale(1.03, 0.97);
+  }
+}
+.basket-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+.basket-slot {
+  position: relative;
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  background: rgba(241, 233, 214, 0.08);
+  border: 1px solid var(--plate-line);
+  animation: cropPop 0.5s cubic-bezier(0.2, 0.9, 0.3, 1.5) both;
+}
+.basket-slot .item-ico {
+  width: 30px;
+  height: 30px;
+}
+.basket-slot .n {
+  position: absolute;
+  right: 4px;
+  bottom: 2px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: var(--cream-2);
+}
+.basket-slot.rare {
+  border-color: rgba(214, 177, 106, 0.7);
+  box-shadow: 0 0 0 3px rgba(214, 177, 106, 0.14), 0 0 14px rgba(214, 177, 106, 0.3);
+}
+@keyframes cropPop {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.4);
+  }
+}
+.basket-note {
+  margin-top: 10px;
+  font-size: 0.8rem;
+  color: var(--cream-2);
+}
+@media (max-width: 640px) {
+  .sharp-body {
+    padding: 12px 14px 16px;
+  }
+  .sharp-bed {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .basket-card {
+    top: 70px;
+  }
+}

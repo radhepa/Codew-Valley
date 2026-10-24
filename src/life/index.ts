@@ -4,14 +4,15 @@ import { clock } from "./clock.ts";
 import "./farming/items.ts";
 import { FISHING } from "./fishing/index.ts";
 import { COOKING } from "./cooking/index.ts";
+import { REVIEW } from "./review/index.ts";
 import "./life.css";
 
-// Village life (LIFE.md): fishing and cooking, each a system in its own folder.
+// Village life (LIFE.md): fishing, cooking and Wren's daily practice, each a system in its own folder.
 // The game imports this module before the world is built (so systems can reserve ground
 // and register animation clips and hand tools at import time), then calls installLife once
 // the world and the HUD exist.
 
-export const SYSTEMS: LifeSystem[] = [FISHING, COOKING];
+export const SYSTEMS: LifeSystem[] = [FISHING, COOKING, REVIEW];
 
 export function installLife(ctx: LifeCtx) {
   ctx.world.onFrame(() => clock.tick());

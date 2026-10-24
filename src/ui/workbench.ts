@@ -29,13 +29,25 @@ export interface BenchOptions {
 
 type Tab = "story" | "learn" | "quiz" | "task";
 
+/** A practice question (src/life/review) rides on its challenge: it opens on the task, has no quiz and its own words. */
+export interface Practice {
+  eyebrow: string;
+  /** The button once the checks pass. */
+  action: string;
+  /** Every Check, passed or not. */
+  onCheck(passed: boolean): void;
+  /** The workbench closed (solved or not). */
+  onClose?(): void;
+}
+
 /** The coding workbench for one challenge. */
 export function workbench(o: BenchOptions): HTMLElement {
   const c = o.challenge;
+  const pr = (c as Challenge & { practice?: Practice }).practice;
   const data = store.data;
   const root = el(`<div class="sheet modal bench" role="dialog" aria-label="${esc(c.title)}">
     <div class="modal-head">
-      <div class="titles"><div class="eyebrow">${o.village ? "Village rune" : `Part ${o.stage} of ${o.total}`} · ${esc(c.part)} <span class="topic-chip">${esc(c.topic)}</span></div><h2>${esc(c.title)}</h2></div>
+      <div class="titles"><div class="eyebrow">${pr ? esc(pr.eyebrow) : o.village ? "Village rune" : `Part ${o.stage} of ${o.total}`} · ${esc(c.part)} <span class="topic-chip">${esc(c.topic)}</span></div><h2>${esc(c.title)}</h2></div>
       <nav class="steps" role="tablist"></nav>
       <button class="close" aria-label="Close">${icon("close")}</button>
     </div>
@@ -66,7 +78,8 @@ export function workbench(o: BenchOptions): HTMLElement {
   const checkBtn = root.querySelector<HTMLButtonElement>(".check")!;
   const status = root.querySelector<HTMLElement>(".py-status")!;
   root.querySelector(".close")!.addEventListener("click", o.close);
-  const CHECK_LABEL = `${icon("check")} Check &amp; build`;
+  const CHECK_LABEL = `${icon("check")} ${pr ? "Check" : "Check &amp; build"}`;
+  if (pr) checkBtn.innerHTML = CHECK_LABEL;
 
   let pipImg = "";
   void portrait("pip").then((u) => {
@@ -78,10 +91,10 @@ export function workbench(o: BenchOptions): HTMLElement {
   // ---- left side tabs -------------------------------------------------------
 
   const labels: Record<Tab, string> = { story: "Story", learn: "Lesson", quiz: "Quick check", task: "Task" };
-  let tab: Tab = data.drafts[c.id] !== undefined ? "task" : "story";
+  let tab: Tab = pr || data.drafts[c.id] !== undefined ? "task" : "story";
   function drawTabs() {
     tabs.innerHTML = "";
-    (Object.keys(labels) as Tab[]).forEach((t, i) => {
+    (Object.keys(labels) as Tab[]).filter((t) => !pr || t !== "quiz").forEach((t, i) => {
       const done = t === "quiz" && data.quiz[c.id];
       const b = el<HTMLButtonElement>(`<button class="step ${t === tab ? "on" : ""} ${done ? "seen" : ""}" role="tab" aria-selected="${t === tab}"><span class="num">${done ? icon("check") : i + 1}</span>${labels[t]}</button>`);
       b.addEventListener("click", () => show(t));
@@ -126,7 +139,7 @@ export function workbench(o: BenchOptions): HTMLElement {
       });
       body.append(more);
     }
-    body.append(nextBtn("Try the quick check", "quiz"));
+    body.append(pr ? nextBtn("On to the task", "task") : nextBtn("Try the quick check", "quiz"));
   }
   function quiz() {
     const q = c.quiz;
@@ -172,7 +185,7 @@ export function workbench(o: BenchOptions): HTMLElement {
         box.append(el(`<details class="file-view"><summary><code>${esc(name)}</code><small>${text.split("\n").filter(Boolean).length} lines</small></summary><pre class="dark">${esc(text)}</pre></details>`));
       body.append(box);
     }
-    body.append(el(`<div class="aside">${icon("rune")}<span>Write your program on the right. <b>Run</b> shows what it does; <b>Check &amp; build</b> asks the rune stone when you think it's right.</span></div>`));
+    body.append(el(`<div class="aside">${icon("rune")}<span>Write your program on the right. <b>Run</b> shows what it does; <b>${pr ? "Check" : "Check &amp; build"}</b> asks the rune stone when you think it's right.</span></div>`));
     const h = el(`<div class="hints"><div class="label">Stuck?</div><div class="list"></div></div>`);
     const list = h.querySelector<HTMLElement>(".list")!;
     const drawHints = () => {
@@ -229,6 +242,7 @@ export function workbench(o: BenchOptions): HTMLElement {
     clearTimeout(saveTimer);
     data.drafts[c.id] = editor.get();
     store.changed();
+    pr?.onClose?.();
   });
 
   function hideFeedback() {
@@ -316,15 +330,17 @@ export function workbench(o: BenchOptions): HTMLElement {
       writeConsole(res, "");
       if (explainResult(res, code)) {
         sfx.fail();
+        pr?.onCheck(false);
         return;
       }
+      pr?.onCheck(!!res.grade?.passed);
       if (res.grade?.passed) {
         sfx.pass();
         const already = o.village ? !!o.solved : store.isDone(c.id);
-        const act = o.village ? `${icon("rune")} Wake the rune` : `${icon("hammer")} Build the ${esc(c.part.toLowerCase())}`;
+        const act = pr ? pr.action : o.village ? `${icon("rune")} Wake the rune` : `${icon("hammer")} Build the ${esc(c.part.toLowerCase())}`;
         const b = el<HTMLButtonElement>(`<button class="btn gold">${already ? "Close" : act}</button>`);
         b.addEventListener("click", () => (already ? o.close() : o.build()));
-        showFeedback("good", "The rune stone glows!", already ? "Still correct. Nicely done." : o.village ? "Your program works. The rune is ready to wake." : "Your program works. The valley is ready to build.", b);
+        showFeedback("good", "The rune stone glows!", already ? "Still correct. Nicely done." : pr ? "Your program works, every way it was tried." : o.village ? "Your program works. The rune is ready to wake." : "Your program works. The valley is ready to build.", b);
         b.focus();
       } else {
         sfx.fail();
