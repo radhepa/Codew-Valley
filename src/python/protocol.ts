@@ -59,6 +59,8 @@ export interface RunRequest {
   stream: boolean;
   /** Challenge checks to run after the program (see helper.ts _pg_grade). */
   tests?: string;
+  /** Files placed in the program's folder before it runs (Challenge.files). */
+  files?: Record<string, string>;
 }
 
 export type ToWorker = { type: "init"; interruptBuffer: Uint8Array | null; indexURL: string } | RunRequest;

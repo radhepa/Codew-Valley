@@ -35,8 +35,9 @@ interface RunState {
 }
 
 let pyodide: PyodideInterface | null = null;
-let runFn: ((code: string) => { toJs(opts: object): unknown; destroy(): void }) | null = null;
-let gradeFn: ((code: string, tests: string) => { toJs(opts: object): unknown; destroy(): void }) | null = null;
+type PyResult = { toJs(opts: object): unknown; destroy(): void };
+let runFn: ((code: string, files: unknown) => PyResult) | null = null;
+let gradeFn: ((code: string, tests: string, files: unknown) => PyResult) | null = null;
 let restoreFn: (() => void) | null = null;
 let interruptBuffer: Uint8Array | null = null;
 let current: RunState | null = null;
@@ -212,7 +213,9 @@ function execute(req: RunRequest) {
 
   let info: Record<string, unknown>;
   try {
-    const proxy = req.tests != null ? gradeFn!(req.code, req.tests) : runFn!(req.code);
+    const files = req.files && Object.keys(req.files).length ? pyodide!.toPy(req.files) : null;
+    const proxy = req.tests != null ? gradeFn!(req.code, req.tests, files) : runFn!(req.code, files);
+    (files as { destroy?: () => void } | null)?.destroy?.();
     info = proxy.toJs({ dict_converter: Object.fromEntries }) as Record<string, unknown>;
     proxy.destroy();
   } catch (err) {

@@ -1861,3 +1861,108 @@ pre.out.err-out {
     border-bottom: 1px solid var(--rule);
   }
 }
+
+/* ---- topics, starting files, the Chronicle ---- */
+.topic-chip {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: rgba(45, 110, 96, 0.12);
+  color: var(--rune-deep);
+  letter-spacing: 0.06em;
+  text-transform: none;
+  font-weight: 700;
+}
+.stage .what {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+}
+.stage .what small {
+  font-size: 0.74rem;
+  font-weight: 500;
+  color: var(--ink-3);
+}
+.stage.next .what small {
+  color: var(--rune-deep);
+}
+.files {
+  margin: 0 0 20px;
+}
+.files .label {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  margin-bottom: 8px;
+}
+.file-view {
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  margin-bottom: 6px;
+  background: var(--paper-2);
+}
+.file-view summary {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  padding: 7px 12px;
+  cursor: pointer;
+}
+.file-view summary small {
+  color: var(--ink-3);
+}
+.file-view pre {
+  margin: 0;
+  padding: 10px 12px;
+  max-height: 220px;
+  overflow: auto;
+  background: var(--code-bg);
+  color: #e8e2d4;
+  border-radius: 0 0 8px 8px;
+  font: 0.8rem/1.5 "JetBrains Mono", ui-monospace, monospace;
+}
+.chronicle {
+  --w: 620px;
+}
+.chronicle-body {
+  padding: 22px 40px 6px;
+  overflow: auto;
+  font-family: var(--display);
+  font-size: 1.06rem;
+  line-height: 1.7;
+  color: var(--ink);
+}
+.chronicle-body p:first-child::first-letter {
+  float: left;
+  font-size: 3.1em;
+  line-height: 0.9;
+  padding: 4px 8px 0 0;
+  color: var(--rune-deep);
+  font-weight: 600;
+}
+.chronicle-body em {
+  color: var(--ink-2);
+}
+.chronicle-body .sign {
+  text-align: right;
+  font-style: italic;
+  font-size: 1.15rem;
+  color: var(--gold-deep);
+  margin: 6px 0 4px;
+}
+.chronicle-foot {
+  padding: 14px 26px 22px;
+  display: flex;
+  justify-content: flex-end;
+}
+@media (max-width: 640px) {
+  .chronicle-body {
+    padding: 18px 22px 4px;
+  }
+}

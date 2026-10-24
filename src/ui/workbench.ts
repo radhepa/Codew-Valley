@@ -31,7 +31,7 @@ export function workbench(o: BenchOptions): HTMLElement {
   const data = store.data;
   const root = el(`<div class="sheet modal bench" role="dialog" aria-label="${esc(c.title)}">
     <div class="modal-head">
-      <div class="titles"><div class="eyebrow">Part ${o.stage} of ${o.total} · ${esc(c.part)}</div><h2>${esc(c.title)}</h2></div>
+      <div class="titles"><div class="eyebrow">Part ${o.stage} of ${o.total} · ${esc(c.part)} <span class="topic-chip">${esc(c.topic)}</span></div><h2>${esc(c.title)}</h2></div>
       <nav class="steps" role="tablist"></nav>
       <button class="close" aria-label="Close">${icon("close")}</button>
     </div>
@@ -160,7 +160,15 @@ export function workbench(o: BenchOptions): HTMLElement {
     const ol = t.querySelector("ol")!;
     // lines indented with spaces belong to the step above them
     for (const line of c.task) ol.append(el(`<li class="${/^\s/.test(line) ? "sub" : ""}">${md(line.trim())}</li>`));
-    body.append(t, el(`<div class="aside">${icon("rune")}<span>Write your program on the right. <b>Run</b> shows what it does; <b>Check &amp; build</b> asks the rune stone when you think it's right.</span></div>`));
+    body.append(t);
+    // starting files the program can open, read-only
+    if (c.files && Object.keys(c.files).length) {
+      const box = el(`<div class="files"><div class="label">${icon("scroll")} Files in the rune's folder</div></div>`);
+      for (const [name, text] of Object.entries(c.files))
+        box.append(el(`<details class="file-view"><summary><code>${esc(name)}</code><small>${text.split("\n").filter(Boolean).length} lines</small></summary><pre class="dark">${esc(text)}</pre></details>`));
+      body.append(box);
+    }
+    body.append(el(`<div class="aside">${icon("rune")}<span>Write your program on the right. <b>Run</b> shows what it does; <b>Check &amp; build</b> asks the rune stone when you think it's right.</span></div>`));
     const h = el(`<div class="hints"><div class="label">Stuck?</div><div class="list"></div></div>`);
     const list = h.querySelector<HTMLElement>(".list")!;
     const drawHints = () => {
@@ -273,6 +281,7 @@ export function workbench(o: BenchOptions): HTMLElement {
     try {
       const res = await o.runner.run(code, [], {
         timeoutMs: 5000,
+        files: c.files,
         onStream: (kind, text) => {
           live += text;
           if (kind === "notice") consoleEl.append(el(`<span class="notice">${esc(text)}\n</span>`));
@@ -299,7 +308,7 @@ export function workbench(o: BenchOptions): HTMLElement {
     runBtn.disabled = checkBtn.disabled = true;
     checkBtn.textContent = "Checking…";
     try {
-      const res = await o.runner.run(code, [], { timeoutMs: 6000, tests: c.tests });
+      const res = await o.runner.run(code, [], { timeoutMs: 6000, tests: c.tests, files: c.files });
       writeConsole(res, "");
       if (explainResult(res, code)) {
         sfx.fail();

@@ -17,6 +17,7 @@ import { personById } from "../content/people/index.ts";
 import type { Person } from "../content/types.ts";
 import { answer, befriend, bond, chat, GAIN, hearts, meet, type Gain } from "../friends.ts";
 import { friendsBook, heartRow } from "./friendsbook.ts";
+import { chronicleSheet } from "./chronicle.ts";
 
 const ICON: Record<Resource, string> = { wood: icon("wood"), stone: icon("stone") };
 const ROMAN = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X", "XI", "XII"];
@@ -355,13 +356,19 @@ export class App {
       const cls = store.isDone(c.id) ? "done" : i === done ? "next" : "";
       const tag = store.isDone(c.id) ? "button" : "div";
       const tagText = store.isDone(c.id) ? "Revisit" : i === done && current ? "Next" : "";
-      const s = el(`<${tag} class="stage ${cls}" ${tag === "button" ? `title="Revisit “${esc(c.title)}”"` : ""}><span class="n">${store.isDone(c.id) ? icon("check") : i + 1}</span><span>${esc(c.part)}</span>${tagText ? `<span class="tag">${tagText}</span>` : ""}</${tag}>`);
+      const s = el(`<${tag} class="stage ${cls}" ${tag === "button" ? `title="Revisit “${esc(c.title)}”"` : ""}><span class="n">${store.isDone(c.id) ? icon("check") : i + 1}</span><span class="what">${esc(c.part)}<small>${esc(c.topic)}</small></span>${tagText ? `<span class="tag">${tagText}</span>` : ""}</${tag}>`);
       if (tag === "button") s.addEventListener("click", () => this.openBench(c));
       stages.append(s);
     });
     const slot = root.querySelector<HTMLElement>(".next-slot")!;
     if (!next) {
-      slot.append(el(`<div class="next-card"><div><div class="label">Complete</div><h3>${esc(b.name)} is finished</h3></div><p>Every part is built. Reopen any part above to practise it again.</p></div>`));
+      const card = el(`<div class="next-card"><div><div class="label">Complete</div><h3>${esc(b.name)} is finished</h3></div><p>Every part is built. Reopen any part above to practise it again.</p></div>`);
+      if (b.chronicle) {
+        const read = el<HTMLButtonElement>(`<button class="btn line">${icon("scroll")} Chronicle page ${ROMAN[BUILDINGS.indexOf(b)]}</button>`);
+        read.addEventListener("click", () => this.openChronicle(b));
+        card.append(read);
+      }
+      slot.append(card);
     } else {
       const d = store.data;
       const can = store.canAfford(next.cost);
@@ -370,7 +377,7 @@ export class App {
         .map((k) => `<span class="${d[k] < next.cost[k] ? "short" : ""}" title="You have ${d[k]} ${k}">${ICON[k]} ${next.cost[k]} ${k}${d[k] < next.cost[k] ? ` · you have ${d[k]}` : ""}</span>`)
         .join("");
       const card = el(`<div class="next-card">
-        <div class="label">Part ${done + 1} · ${esc(next.part)}</div>
+        <div class="label">Part ${done + 1} · ${esc(next.part)} · ${esc(next.topic)}</div>
         <h3>${esc(next.title)}</h3>
         <div class="cost">${cost || "<span>No materials needed</span>"}</div>
       </div>`);
@@ -417,6 +424,7 @@ export class App {
       const after = BUILDINGS[BUILDINGS.indexOf(b) + 1];
       if (!after || !after.challenges.length) lines.push({ who: "Pip", text: "That's the end of this chapter. More of the valley is coming soon. Practise any part again at the rune stone." });
       await this.say(lines);
+      if (b.chronicle) await this.openChronicle(b);
       if (after?.challenges.length) await this.openChapter(after);
       return;
     }
@@ -425,6 +433,21 @@ export class App {
       lines.push({ who: "Pip", text: `Next up: the **${next.part.toLowerCase()}**. We'll need ${next.cost.wood ? `${next.cost.wood} wood` : ""}${next.cost.wood && next.cost.stone ? " and " : ""}${next.cost.stone ? `${next.cost.stone} stone` : ""}.` });
     } else lines.push({ who: "Pip", text: `We already have the materials for the **${next.part.toLowerCase()}**. Back to the rune stone whenever you're ready!` });
     await this.say(lines);
+  }
+
+  /** Ysolde's Chronicle page for a finished building; resolves when it is closed. */
+  openChronicle(b: Building) {
+    return new Promise<void>((done) => {
+      const sheet = chronicleSheet(b.chronicle!, ROMAN[BUILDINGS.indexOf(b)], () => this.closeModal());
+      sheet.addEventListener("chronicle:closed", () => done(), { once: true });
+      this.openModal(sheet);
+      new MutationObserver((_, obs) => {
+        if (!sheet.isConnected) {
+          obs.disconnect();
+          sheet.dispatchEvent(new Event("chronicle:closed"));
+        }
+      }).observe(this.ui, { childList: true });
+    });
   }
 
   /** A new building's chapter begins: its villager arrives and tells their story once. */

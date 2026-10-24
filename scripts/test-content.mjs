@@ -1,9 +1,13 @@
 // Verifies every piece of Python content against real Python (Pyodide in Node):
 // Codex examples print what they claim, quiz answers match real output, every
 // challenge's reference solution passes and every listed mistake fails.
+//
+//   npm test                  everything
+//   npm test -- dock market   only these buildings' challenges and Codex pages
+//   npm test -- dock -v       also print why each listed mistake fails
 import { loadPyodide } from "pyodide";
 import { HELPER } from "../src/python/helper.ts";
-import { CODEX, codexById } from "../src/content/codex.ts";
+import { CODEX, codexById, PAGES_BY_BUILDING } from "../src/content/codex.ts";
 import { BUILDINGS } from "../src/content/index.ts";
 import { PEOPLE, personById } from "../src/content/people/index.ts";
 
@@ -13,24 +17,62 @@ const dec = new TextDecoder();
 py.setStdout({ write: (b) => ((out += dec.decode(b)), b.length) });
 py.setStderr({ write: (b) => b.length });
 py.runPython(HELPER);
+// The game stops runaway programs with a timer; here an endless loop in a
+// listed mistake would hang the tests, so learner code gets a line budget.
+py.runPython(`
+class LoopLimit(Exception):
+    pass
+_pg_lines = [0]
+def _pg_tracer(frame, event, arg):
+    if frame.f_code.co_filename != "main.py":
+        return None
+    def local(frame, event, arg):
+        if event == "line":
+            _pg_lines[0] += 1
+            if _pg_lines[0] > 3000000:
+                raise LoopLimit("ran more than 3 million lines: an endless loop?")
+        return local
+    return local
+sys.settrace(_pg_tracer)
+`);
 const run = py.globals.get("_pg_run");
 const grade = py.globals.get("_pg_grade");
+const resetLines = () => py.runPython("_pg_lines[0] = 0");
+const toPy = (files) => (files ? py.toPy(files) : null);
 
-function exec(code) {
+function exec(code, files) {
   out = "";
-  const res = run(code).toJs({ dict_converter: Object.fromEntries });
+  resetLines();
+  const res = run(code, toPy(files)).toJs({ dict_converter: Object.fromEntries });
   return { ...res, output: out };
 }
-function check(code, tests) {
+function check(code, tests, files) {
   out = "";
-  return grade(code, tests).toJs({ dict_converter: Object.fromEntries });
+  resetLines();
+  return grade(code, tests, toPy(files)).toJs({ dict_converter: Object.fromEntries });
 }
+
+// Building filter from the command line (anything that isn't a flag).
+const only = process.argv.slice(2).filter((a) => !a.startsWith("-"));
+for (const id of only) if (!BUILDINGS.some((b) => b.id === id)) throw new Error(`No building "${id}". Try one of: ${BUILDINGS.map((b) => b.id).join(", ")}`);
+const wanted = (id) => !only.length || only.includes(id);
+/** Parts in each building's model (art/specs): one challenge per part. */
+const STAGES = { tavern: 12, mill: 14, dock: 12, market: 14, bakery: 14, forge: 15, library: 14, apothecary: 14, townhall: 14, clocktower: 14, guildhall: 16, observatory: 16 };
+/** Which building each Codex page belongs to, by story position (0 = tavern and mill). */
+const pageHome = new Map();
+Object.entries(PAGES_BY_BUILDING).forEach(([home, pages]) => pages.forEach((p) => pageHome.set(p.id, home === "base" ? 1 : BUILDINGS.findIndex((b) => b.id === home))));
 
 const failures = [];
 const fail = (where, msg) => failures.push(`${where}: ${msg}`);
 let count = 0;
 
+const pageIds = new Set();
 for (const page of CODEX) {
+  if (pageIds.has(page.id)) fail(`codex/${page.id}`, "duplicate page id");
+  pageIds.add(page.id);
+}
+const checkedPages = Object.entries(PAGES_BY_BUILDING).filter(([home]) => (home === "base" ? !only.length : wanted(home))).flatMap(([, pages]) => pages);
+for (const page of checkedPages) {
   page.blocks.forEach((b, i) => {
     if (!("code" in b)) return;
     count++;
@@ -46,11 +88,24 @@ for (const page of CODEX) {
 
 const ids = new Set();
 for (const building of BUILDINGS) {
+  for (const c of building.challenges) if (ids.has(c.id)) fail(`${building.id}/${c.id}`, "duplicate id");
+  building.challenges.forEach((c) => ids.add(c.id));
+  if (!wanted(building.id)) continue;
+  const at = BUILDINGS.indexOf(building);
+  const want = STAGES[building.id];
+  if (building.challenges.length && building.challenges.length !== want)
+    fail(`buildings/${building.id}`, `has ${building.challenges.length} challenges but its model has ${want} parts (one challenge per part)`);
+  if (building.challenges.length === want && building.id !== "tavern" && building.id !== "mill") {
+    if (!building.chronicle) fail(`buildings/${building.id}`, "needs its Chronicle page (STORY.md)");
+    if (!building.opening.length || !building.finale.length) fail(`buildings/${building.id}`, "needs opening and finale lines");
+  }
   for (const c of building.challenges) {
     const where = `${building.id}/${c.id}`;
-    if (ids.has(c.id)) fail(where, "duplicate id");
-    ids.add(c.id);
-    for (const p of c.codex) if (!codexById.has(p)) fail(where, `unknown codex page ${p}`);
+    if (!c.topic?.trim()) fail(where, "needs a topic");
+    for (const p of c.codex) {
+      if (!codexById.has(p)) fail(where, `unknown codex page ${p}`);
+      else if (pageHome.get(p) > Math.max(at, 1)) fail(where, `codex page ${p} is taught in a later building`);
+    }
 
     // Quiz: the marked answer must be what really happens.
     count++;
@@ -62,17 +117,17 @@ for (const building of BUILDINGS) {
     if (others.includes(got)) fail(`${where} quiz`, "two options are the same as the real output");
 
     count++;
-    const sol = check(c.solution, c.tests);
+    const sol = check(c.solution, c.tests, c.files);
     if (!sol.passed) fail(`${where} solution`, `fails: ${sol.status} ${sol.type ?? ""} ${sol.message ?? ""} ${sol.feedback}`);
 
     count++;
-    const st = check(c.starter, c.tests);
+    const st = check(c.starter, c.tests, c.files);
     if (st.passed) fail(`${where} starter`, "passes without any work");
     if (st.feedback.startsWith("The rune-checker tripped")) fail(`${where} starter`, `checker crashed: ${st.feedback}`);
 
     c.wrong.forEach((w, i) => {
       count++;
-      const res = check(w, c.tests);
+      const res = check(w, c.tests, c.files);
       if (res.passed) fail(`${where} wrong#${i}`, "passes but should fail");
       else if (res.feedback.startsWith("The rune-checker tripped")) fail(`${where} wrong#${i}`, `checker crashed: ${res.feedback}`);
       else if (process.argv.includes("-v")) console.log(`  ${where} wrong#${i}: ${res.status === "error" ? res.type + ": " + res.message : res.feedback}`);
@@ -105,4 +160,5 @@ if (failures.length) {
   console.error(`✗ ${failures.length} of ${count} content checks failed:\n` + failures.map((f) => "  - " + f).join("\n"));
   process.exit(1);
 }
-console.log(`✓ all ${count} content checks passed (${CODEX.length} codex pages, ${ids.size} challenges, ${PEOPLE.length} villagers)`);
+const scope = only.length ? ` for ${only.join(", ")}` : "";
+console.log(`✓ all ${count} content checks passed${scope} (${CODEX.length} codex pages, ${ids.size} challenges, ${PEOPLE.length} villagers)`);

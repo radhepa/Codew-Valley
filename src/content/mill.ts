@@ -69,11 +69,20 @@ export const MILL: Building = {
     "Wren: My family's mill had a blue door. This one's green. I think I like green. Don't tell my grandmother.",
     "Wren: If the wind's up, the sails go round. Else, I nap. Elif it's raining, I nap indoors.",
   ],
+  chronicle: {
+    title: "The Speaking Stones",
+    text: [
+      "By our second summer there were eleven of us, and the stones had learned to choose. *If* the wind was up, the mill turned. *Else* it rested, and so did the miller.",
+      "The newcomers think the stones are magic. They are not. A stone does exactly what it is told, no more and no less, which is rarer than magic. All of the cleverness is in the telling, and the telling can be learned by anyone patient enough to be wrong a few times first.",
+      "I carved the miller's questions into the millstone myself, so they would outlast the people who first asked them. Stone keeps a promise longer than we can.",
+    ],
+  },
   challenges: [
     {
       id: "m01-reading-the-wind",
       part: "Survey stakes",
       title: "Reading the Wind",
+      topic: "comparisons",
       cost: { wood: 3, stone: 0 },
       intro: [
         "Wren: Before a single stone goes down, I read the wind. A mill on a still hill is just a very tall shed.",
@@ -171,6 +180,7 @@ print("Too strong: False")`],
       id: "m02-first-stones",
       part: "Stone foundation",
       title: "If There's Enough Stone",
+      topic: "if",
       cost: { wood: 0, stone: 5 },
       intro: [
         "Wren: The plinth is one big ring of stone. Half a plinth is worse than none, so we only start if the cart has enough.",
@@ -248,6 +258,7 @@ print("Stone left: 2")`],
       id: "m03-wall-or-wait",
       part: "Lower tower",
       title: "Stack or Wait",
+      topic: "if / else",
       cost: { wood: 0, stone: 6 },
       intro: [
         "Wren: The tower goes up one ring of stone at a time. But stack on wet mortar and the whole lot slumps like a sad pudding.",
@@ -338,6 +349,7 @@ print(f"Wall height: {wall_height} m")`],
       id: "m04-tower-weather",
       part: "Upper tower",
       title: "Three Kinds of Wind",
+      topic: "elif",
       cost: { wood: 2, stone: 6 },
       intro: [
         "Up top, the wind matters even more. Wren has three rules for the scaffold, and only **one** should ever be followed.",
@@ -419,6 +431,7 @@ else:
       id: "m05-knock-knock",
       part: "Door",
       title: "The Miller's Word",
+      topic: "comparing text",
       cost: { wood: 4, stone: 1 },
       intro: [
         "Wren: Every mill door I've ever had opens for one word: **wheat**. Old millers' custom. Keeps the crows guessing.",
@@ -494,6 +507,7 @@ print("The door swings open.")`],
       id: "m06-shutters",
       part: "Windows",
       title: "Shutters and Candles",
+      topic: "and / or",
       cost: { wood: 3, stone: 2 },
       intro: [
         "Wren: Little windows, with shutters. Shut them when it rains **or** when the wind howls. Either one is reason enough.",
@@ -586,6 +600,7 @@ print("A candle in the window.")`],
       id: "m07-gallery",
       part: "Gallery",
       title: "Not Yet, Wren!",
+      topic: "not",
       cost: { wood: 5, stone: 0 },
       intro: [
         "A wooden balcony ring, the **gallery**, goes around the tower. Wren keeps trying to step out onto it before it's finished.",
@@ -683,6 +698,7 @@ else:
       id: "m08-cap-shingles",
       part: "Cap",
       title: "What's in the Cart?",
+      topic: "in",
       cost: { wood: 5, stone: 1 },
       intro: [
         "The cap is the mill's hat. It needs shingles and tar. Wren packed the cart this morning. Probably.",
@@ -777,6 +793,7 @@ print("Pip, fetch the tar!")`],
       id: "m09-windshaft",
       part: "Windshaft",
       title: "Grease and Brakes",
+      topic: "nested ifs",
       cost: { wood: 6, stone: 0 },
       intro: [
         "The windshaft is the big axle that pokes out of the cap. The sails will hang on it. Wren checks it in a very particular order.",
@@ -873,6 +890,7 @@ else:
       id: "m10-sails",
       part: "Sails",
       title: "Sails Up!",
+      topic: "truthiness and %",
       cost: { wood: 6, stone: 0 },
       intro: [
         "The big moment: four lattice sails, dressed in cloth. Wren sews the cloths in **pairs**, so an odd one out means a wobbly sail.",
@@ -1019,6 +1037,7 @@ else:
       id: "m11-field",
       part: "Field",
       title: "Just Right Soil",
+      topic: "chained comparisons",
       cost: { wood: 3, stone: 2 },
       intro: [
         "A mill needs wheat, and wheat needs a field. Wren crumbles a handful of soil and frowns at it like a picky aunt.",
@@ -1126,6 +1145,7 @@ print(f"Good for sowing: {good_temp}")`],
       id: "m12-wheat",
       part: "Wheat",
       title: "Measuring the Wheat",
+      topic: "min, max and round",
       cost: { wood: 3, stone: 2 },
       intro: [
         "Wren: It's a millstone. An old one, older than any mill I've heard of. And Pip, look: it's carved with the same runes as your stone.",
@@ -1289,6 +1309,7 @@ else:
       id: "m13-ledger",
       part: "Fence and cart",
       title: "The Miller's Ledger",
+      topic: "choosing words with if",
       cost: { wood: 6, stone: 2 },
       intro: [
         "The first sacks of flour are milled! Bram has put in an order, and Wren keeps a ledger, a little book of every sale.",
@@ -1438,6 +1459,7 @@ else:
       id: "m14-weather-report",
       part: "Lanterns and sign",
       title: "The Morning Report",
+      topic: "putting it together",
       cost: { wood: 5, stone: 4 },
       intro: [
         "Last piece: a weather vane on the cap, lanterns by the door and a sign with a wheat sheaf. Wren wants the mill to decide its own day, every morning, from the weather.",

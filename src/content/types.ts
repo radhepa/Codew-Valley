@@ -41,6 +41,8 @@ export interface Challenge {
   /** The building part this challenge adds, e.g. "Foundation stones". */
   part: string;
   title: string;
+  /** The Python idea this challenge practises, shown on the rune stone and workbench (e.g. "while loops"). */
+  topic: string;
   cost: Cost;
   /** Story lines before the challenge (Pip, or "Name: …" for a villager). */
   intro: string[];
@@ -50,6 +52,12 @@ export interface Challenge {
   /** The task as a short checklist. */
   task: string[];
   starter: string;
+  /**
+   * Files waiting in the program's folder before it runs (name → contents),
+   * for challenges that read files. Shown read-only in the workbench, and put
+   * back fresh for every run and every rerun the checks make.
+   */
+  files?: Record<string, string>;
   /** Python checks run after the learner's program (see python/helper.ts _pg_grade). */
   tests: string;
   hints: [string, string, string];
@@ -128,5 +136,14 @@ export interface Building {
   chatDuring: string[];
   /** What the villager says once their building is finished. */
   chatAfter: string[];
+  /** Ysolde's Chronicle page, shown once the building is finished (STORY.md). */
+  chronicle?: Chronicle;
   challenges: Challenge[];
+}
+
+/** A page of Ysolde's Chronicle: one per building, numbered by building order. */
+export interface Chronicle {
+  title: string;
+  /** Paragraphs in Ysolde's own voice. Supports **bold** and *italics*. */
+  text: string[];
 }

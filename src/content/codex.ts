@@ -1,11 +1,22 @@
 import type { CodexPage } from "./types.ts";
+import { DOCK_PAGES } from "./pages/dock.ts";
+import { MARKET_PAGES } from "./pages/market.ts";
+import { BAKERY_PAGES } from "./pages/bakery.ts";
+import { FORGE_PAGES } from "./pages/forge.ts";
+import { LIBRARY_PAGES } from "./pages/library.ts";
+import { APOTHECARY_PAGES } from "./pages/apothecary.ts";
+import { TOWNHALL_PAGES } from "./pages/townhall.ts";
+import { CLOCKTOWER_PAGES } from "./pages/clocktower.ts";
+import { GUILDHALL_PAGES } from "./pages/guildhall.ts";
+import { OBSERVATORY_PAGES } from "./pages/observatory.ts";
 
 // The Codex: the in-game Python book. Every concept a challenge needs is
 // explained here, with examples whose output the content tests verify, so a
 // player never has to search the web.
 const r = String.raw;
 
-export const CODEX: CodexPage[] = [
+/** Pages for the tavern and the mill (buildings 1 and 2). */
+const BASE: CodexPage[] = [
   {
     id: "print",
     title: "Speaking with print()",
@@ -622,5 +633,23 @@ print("hi")`, err: "IndentationError" },
     ],
   },
 ];
+
+/** Each building's own pages, in story order ("base" holds buildings 1 and 2). */
+export const PAGES_BY_BUILDING: Record<string, CodexPage[]> = {
+  base: BASE,
+  dock: DOCK_PAGES,
+  market: MARKET_PAGES,
+  bakery: BAKERY_PAGES,
+  forge: FORGE_PAGES,
+  library: LIBRARY_PAGES,
+  apothecary: APOTHECARY_PAGES,
+  townhall: TOWNHALL_PAGES,
+  clocktower: CLOCKTOWER_PAGES,
+  guildhall: GUILDHALL_PAGES,
+  observatory: OBSERVATORY_PAGES,
+};
+
+/** The whole Codex in story order. */
+export const CODEX: CodexPage[] = Object.values(PAGES_BY_BUILDING).flat();
 
 export const codexById = new Map(CODEX.map((p) => [p.id, p]));

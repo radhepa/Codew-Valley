@@ -17,6 +17,8 @@ export interface RunOptions {
   timeoutMs?: number;
   /** Grade the program against these challenge checks. */
   tests?: string;
+  /** Files in the program's folder before it starts (Challenge.files). */
+  files?: Record<string, string>;
 }
 
 interface ActiveRun {
@@ -110,7 +112,7 @@ export class PythonRunner {
       };
       this.active = run;
       if (opts.timeoutMs) run.timers.push(window.setTimeout(() => this.stop("timeout"), opts.timeoutMs));
-      this.send({ type: "run", id: run.id, code, inputs, stream: Boolean(opts.onStream), tests: opts.tests });
+      this.send({ type: "run", id: run.id, code, inputs, stream: Boolean(opts.onStream), tests: opts.tests, files: opts.files });
     });
   }
 

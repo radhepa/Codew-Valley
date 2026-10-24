@@ -180,7 +180,15 @@ interface Site {
   cine?(n: number): { look: [number, number, number]; view: [number, number, number] };
 }
 
-const site = (x: number, z: number, area: Rect, solid: Rect, height: number, litAt: number): Site => ({ pos: new THREE.Vector3(x, 0, z), area, solid, height, litAt });
+/** A site; `who` is where its villager stands, relative to the site: [dx, dz, facing]. */
+const site = (x: number, z: number, area: Rect, solid: Rect, height: number, litAt: number, who?: [number, number, number]): Site => ({
+  pos: new THREE.Vector3(x, 0, z),
+  area,
+  solid,
+  height,
+  litAt,
+  ...(who ? { villager: new THREE.Vector3(x + who[0], 0, z + who[1]), villagerRot: who[2] } : {}),
+});
 
 const SITES: Record<string, Site> = {
   tavern: {
@@ -204,15 +212,15 @@ const SITES: Record<string, Site> = {
     cine: (n) => (n >= 11 && n <= 13 ? { look: [-5, 0.8, 0], view: [-1, 9, 15] } : { look: [0, 4.6, 0], view: [9, 10, 26] }),
   },
   // footprints and glow stages from art/specs/<id>.md
-  dock: site(13, 3, { x: -0.3, z: 2.85, hw: 4.6, hd: 6.9 }, { x: 0, z: -1.5, hw: 2.4, hd: 2.2 }, 6, 12),
-  market: site(0, 24, { x: 0, z: 0.35, hw: 7.8, hd: 7.2 }, { x: 0, z: 0, hw: 0.6, hd: 0.6 }, 4.5, 4),
-  bakery: site(14, 24, { x: 1.05, z: 0, hw: 5.2, hd: 4.1 }, { x: -0.5, z: 0, hw: 3, hd: 2.6 }, 7, 11),
-  forge: site(30, -6, { x: 0, z: 0, hw: 5.5, hd: 4.5 }, { x: 0, z: -0.5, hw: 3.6, hd: 2.6 }, 8, 5),
-  library: site(-30, -15, { x: 0.5, z: 0.5, hw: 6, hd: 5.5 }, { x: 0, z: 0, hw: 3.6, hd: 2.6 }, 10, 3),
-  apothecary: site(-16, 22, { x: -0.5, z: 0.55, hw: 6.5, hd: 5 }, { x: 0.5, z: -0.5, hw: 3.4, hd: 2.6 }, 7.5, 14),
-  townhall: site(14, -25, { x: 0, z: 0, hw: 7.5, hd: 5.5 }, { x: 0, z: -1, hw: 5.4, hd: 3.4 }, 13.6, 14),
-  clocktower: site(31, 13, { x: -1.2, z: 0.2, hw: 4.5, hd: 3.6 }, { x: 0, z: 0, hw: 1.8, hd: 1.8 }, 14.5, 12),
-  guildhall: site(-31, 4, { x: 0, z: 0, hw: 9, hd: 5.5 }, { x: 0, z: -1, hw: 6, hd: 2.6 }, 8.5, 13),
+  dock: site(13, 3, { x: -0.3, z: 2.85, hw: 4.6, hd: 6.9 }, { x: 0, z: -1.5, hw: 2.4, hd: 2.2 }, 6, 12, [2.6, 1.2, -0.5]),
+  market: site(0, 24, { x: 0, z: 0.35, hw: 7.8, hd: 7.2 }, { x: 0, z: 0, hw: 0.6, hd: 0.6 }, 4.5, 4, [1.7, 1.9, 0.3]),
+  bakery: site(14, 24, { x: 1.05, z: 0, hw: 5.2, hd: 4.1 }, { x: -0.5, z: 0, hw: 3, hd: 2.6 }, 7, 11, [-2.6, 3.7, 0.4]),
+  forge: site(30, -6, { x: 0, z: 0, hw: 5.5, hd: 4.5 }, { x: 0, z: -0.5, hw: 3.6, hd: 2.6 }, 8, 5, [-2.4, 3.3, 0.4]),
+  library: site(-30, -15, { x: 0.5, z: 0.5, hw: 6, hd: 5.5 }, { x: 0, z: 0, hw: 3.6, hd: 2.6 }, 10, 3, [2.7, 3.8, -0.4]),
+  apothecary: site(-16, 22, { x: -0.5, z: 0.55, hw: 6.5, hd: 5 }, { x: 0.5, z: -0.5, hw: 3.4, hd: 2.6 }, 7.5, 14, [-1.8, 3.2, 0.3]),
+  townhall: site(14, -25, { x: 0, z: 0, hw: 7.5, hd: 5.5 }, { x: 0, z: -1, hw: 5.4, hd: 3.4 }, 13.6, 14, [2.2, 3.8, -0.3]),
+  clocktower: site(31, 13, { x: -1.2, z: 0.2, hw: 4.5, hd: 3.6 }, { x: 0, z: 0, hw: 1.8, hd: 1.8 }, 14.5, 12, [2.0, 2.9, -0.4]),
+  guildhall: site(-31, 4, { x: 0, z: 0, hw: 9, hd: 5.5 }, { x: 0, z: -1, hw: 6, hd: 2.6 }, 8.5, 13, [3.4, 3.6, -0.3]),
   observatory: site(0, -37, { x: 0, z: 0.2, hw: 5.9, hd: 6.2 }, { x: 0, z: 0.2, hw: 4.4, hd: 4.4 }, 10.5, 16),
 };
 

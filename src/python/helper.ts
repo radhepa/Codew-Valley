@@ -16,6 +16,7 @@ _pg_recursion = sys.getrecursionlimit()
 _pg_home = os.getcwd()
 _pg_workdir = "/tmp/village-run"
 _pg_saved_modules = set(sys.modules)
+_pg_files = {}
 
 def _pg_restore():
     d = builtins.__dict__
@@ -36,9 +37,13 @@ def _pg_restore():
         pass
 
 def _pg_fresh_folder():
+    # An empty folder, plus the challenge's starting files (Challenge.files).
     shutil.rmtree(_pg_workdir, ignore_errors=True)
     os.makedirs(_pg_workdir, exist_ok=True)
     os.chdir(_pg_workdir)
+    for name, text in _pg_files.items():
+        with open(name, "w", encoding="utf-8") as f:
+            f.write(text)
 
 def _pg_user_tb(tb):
     while tb is not None and tb.tb_frame.f_code.co_filename != "main.py":
@@ -91,7 +96,12 @@ def _pg_exec(source, ns):
             pass
     return result
 
-def _pg_run(source):
+def _pg_set_files(files):
+    global _pg_files
+    _pg_files = dict(files) if files else {}
+
+def _pg_run(source, files=None):
+    _pg_set_files(files)
     ns = _pg_new_ns(source)
     try:
         return _pg_exec(source, ns)
@@ -132,8 +142,11 @@ def _pg_expect_lines(lines, expected):
 
 def _pg_rerun(source):
     # Runs a variant of the program (checks swap in other starting values so
-    # typed-in answers do not pass) and returns its variables and lines.
+    # typed-in answers do not pass) and returns its variables and lines. The
+    # folder is reset to the challenge's starting files first, so read what
+    # the main run wrote before calling rerun.
     import io
+    _pg_fresh_folder()
     buf = io.StringIO()
     old = sys.stdout
     sys.stdout = buf
@@ -144,11 +157,13 @@ def _pg_rerun(source):
         sys.stdout = old
     return ns2, [l.rstrip() for l in buf.getvalue().splitlines()]
 
-def _pg_grade(source, tests):
+def _pg_grade(source, tests, files=None):
     # Runs the learner's program, then the challenge's checks. Checks see:
     # ns (the program's variables), out (everything printed), lines (out
     # split into lines, right-stripped), src (the source), check(cond, msg),
-    # expect_lines(list) and rerun(variant_source) -> (ns, lines).
+    # expect_lines(list), rerun(variant_source) -> (ns, lines) and files (the
+    # starting files). The program's folder is the current directory.
+    _pg_set_files(files)
     ns = _pg_new_ns(source)
     tee = _PgTee(sys.stdout)
     sys.stdout = tee
@@ -168,6 +183,7 @@ def _pg_grade(source, tests):
             "expect_lines": lambda expected: _pg_expect_lines(lines, expected),
             "rerun": _pg_rerun,
             "src": source,
+            "files": dict(_pg_files),
             "check": _pg_check,
             "__builtins__": builtins,
         }
