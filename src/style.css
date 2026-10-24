@@ -69,6 +69,10 @@ body {
 #ui > * {
   pointer-events: auto;
 }
+/* HUD parts set their own display (grid, flex), which would outrank [hidden] */
+#ui [hidden] {
+  display: none;
+}
 #ui::after {
   content: "";
   position: fixed;

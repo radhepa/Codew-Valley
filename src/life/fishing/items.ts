@@ -17,7 +17,8 @@ export const FISH_ITEMS: ItemDef[] = [
   { id: "crayfish", name: "Crayfish", kind: "fish", desc: "A small grumpy lobster of the pond. Pinches.", icon: `<path d="M12 8v10M9 10c-2-1-4-3-3-5 2 0 3 2 3 5zM15 10c2-1 4-3 3-5-2 0-3 2-3 5z"/><path d="M10 12h4M10 15h4M11 18l-1 2M13 18l1 2"/>`, color: "#b2553a", tags: ["fish", "pond", "spicy"] },
   { id: "golden_koi", name: "Golden Koi", kind: "fish", desc: "It shines like a coin under the water. Nobody knows how it got into the pond.", icon: `${BIG_FISH}<path d="M14 6l1-2M17 7l2-1"/>`, color: "#d7a32c", tags: ["fish", "pond", "rare", "shiny"] },
   { id: "old_boot", name: "Old Boot", kind: "forage", desc: "Soggy, and not even a pair.", icon: `<path d="M7 4h5v9l6 2c1.5.5 2 1.5 2 3v1H6z"/><path d="M6 19v1h14"/>`, color: "#6b5a48", tags: ["junk"] },
-  { id: "willowmere_coin", name: "Willowmere Coin", kind: "treasure", desc: "A green-bronze coin stamped with a rune. Three hundred years under the pond.", icon: `<circle cx="12" cy="12" r="7.5"/><circle cx="12" cy="12" r="5.5"/><path d="M12 8.5v7M10 10.5l2 1.5 2-1.5"/>`, color: "#5f9c86", tags: ["treasure", "old", "shiny", "rare"] },
+  { id: "willowmere_coin", name: "Willowmere Coin", kind: "treasure", desc: "A green-bronze coin stamped with a rune on one side and a willow on the other. Three hundred years under the pond.", icon: `<circle cx="12" cy="12" r="7.5"/><circle cx="12" cy="12" r="5.5"/><path d="M12 8.5v7M10 10.5l2 1.5 2-1.5"/>`, color: "#5f9c86", tags: ["treasure", "old", "shiny", "rare"] },
+  { id: "grans_rod", name: "Gran's Rod", kind: "tool", desc: "Marlo's gran's old split-cane rod, mended with a strip of blue cloth. Casts a bit to the left.", icon: `<path d="M4 20 19 4"/><circle cx="7.5" cy="16.5" r="2"/><path d="M19 4c1.5 3 1.5 6 0 9"/><path d="M18.6 13.2v2.3"/>`, color: "#9c7240", tags: ["tool"], gift: false, stack: 1 },
 ];
 
 defineItems(FISH_ITEMS);
