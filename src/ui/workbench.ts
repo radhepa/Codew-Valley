@@ -21,6 +21,10 @@ export interface BenchOptions {
   openCodex(page: string): void;
   /** Called when the checks pass and the player chooses to build. */
   build(): void;
+  /** A village rune (src/life) rather than a building part. */
+  village?: boolean;
+  /** For a village rune: already solved before. */
+  solved?: boolean;
 }
 
 type Tab = "story" | "learn" | "quiz" | "task";
@@ -31,7 +35,7 @@ export function workbench(o: BenchOptions): HTMLElement {
   const data = store.data;
   const root = el(`<div class="sheet modal bench" role="dialog" aria-label="${esc(c.title)}">
     <div class="modal-head">
-      <div class="titles"><div class="eyebrow">Part ${o.stage} of ${o.total} · ${esc(c.part)} <span class="topic-chip">${esc(c.topic)}</span></div><h2>${esc(c.title)}</h2></div>
+      <div class="titles"><div class="eyebrow">${o.village ? "Village rune" : `Part ${o.stage} of ${o.total}`} · ${esc(c.part)} <span class="topic-chip">${esc(c.topic)}</span></div><h2>${esc(c.title)}</h2></div>
       <nav class="steps" role="tablist"></nav>
       <button class="close" aria-label="Close">${icon("close")}</button>
     </div>
@@ -316,10 +320,11 @@ export function workbench(o: BenchOptions): HTMLElement {
       }
       if (res.grade?.passed) {
         sfx.pass();
-        const already = store.isDone(c.id);
-        const b = el<HTMLButtonElement>(`<button class="btn gold">${already ? "Close" : `${icon("hammer")} Build the ${esc(c.part.toLowerCase())}`}</button>`);
+        const already = o.village ? !!o.solved : store.isDone(c.id);
+        const act = o.village ? `${icon("rune")} Wake the rune` : `${icon("hammer")} Build the ${esc(c.part.toLowerCase())}`;
+        const b = el<HTMLButtonElement>(`<button class="btn gold">${already ? "Close" : act}</button>`);
         b.addEventListener("click", () => (already ? o.close() : o.build()));
-        showFeedback("good", "The rune stone glows!", already ? "Still correct. Nicely done." : "Your program works. The valley is ready to build.", b);
+        showFeedback("good", "The rune stone glows!", already ? "Still correct. Nicely done." : o.village ? "Your program works. The rune is ready to wake." : "Your program works. The valley is ready to build.", b);
         b.focus();
       } else {
         sfx.fail();

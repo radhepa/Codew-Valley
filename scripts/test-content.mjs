@@ -5,11 +5,13 @@
 //   npm test                  everything
 //   npm test -- dock market   only these buildings' challenges and Codex pages
 //   npm test -- dock -v       also print why each listed mistake fails
+//   npm test -- life          only the village runes (src/life)
 import { loadPyodide } from "pyodide";
 import { HELPER } from "../src/python/helper.ts";
 import { CODEX, codexById, PAGES_BY_BUILDING } from "../src/content/codex.ts";
 import { BUILDINGS } from "../src/content/index.ts";
 import { PEOPLE, personById } from "../src/content/people/index.ts";
+import { LIFE_RUNES } from "../src/life/runes.ts";
 
 const py = await loadPyodide();
 let out = "";
@@ -54,7 +56,7 @@ function check(code, tests, files) {
 
 // Building filter from the command line (anything that isn't a flag).
 const only = process.argv.slice(2).filter((a) => !a.startsWith("-"));
-for (const id of only) if (!BUILDINGS.some((b) => b.id === id)) throw new Error(`No building "${id}". Try one of: ${BUILDINGS.map((b) => b.id).join(", ")}`);
+for (const id of only) if (id !== "life" && !BUILDINGS.some((b) => b.id === id)) throw new Error(`No building "${id}". Try one of: ${BUILDINGS.map((b) => b.id).join(", ")}, life`);
 const wanted = (id) => !only.length || only.includes(id);
 /** Parts in each building's model (art/specs): one challenge per part. */
 const STAGES = { tavern: 12, mill: 14, dock: 12, market: 14, bakery: 14, forge: 15, library: 14, apothecary: 14, townhall: 14, clocktower: 14, guildhall: 16, observatory: 16 };
@@ -86,6 +88,40 @@ for (const page of checkedPages) {
   });
 }
 
+function checkChallenge(where, c, at) {
+  if (!c.topic?.trim()) fail(where, "needs a topic");
+  for (const p of c.codex) {
+    if (!codexById.has(p)) fail(where, `unknown codex page ${p}`);
+    else if (pageHome.get(p) > Math.max(at, 1)) fail(where, `codex page ${p} is taught in a later building`);
+  }
+
+  // Quiz: the marked answer must be what really happens.
+  count++;
+  const q = exec(c.quiz.code);
+  const want = c.quiz.options[c.quiz.answer];
+  const got = q.status === "error" ? q.type : q.output.trimEnd() === "" ? "(nothing)" : q.output.trimEnd();
+  if (got !== want) fail(`${where} quiz`, `answer says ${JSON.stringify(want)} but Python gives ${JSON.stringify(got)}`);
+  const others = c.quiz.options.filter((_, i) => i !== c.quiz.answer);
+  if (others.includes(got)) fail(`${where} quiz`, "two options are the same as the real output");
+
+  count++;
+  const sol = check(c.solution, c.tests, c.files);
+  if (!sol.passed) fail(`${where} solution`, `fails: ${sol.status} ${sol.type ?? ""} ${sol.message ?? ""} ${sol.feedback}`);
+
+  count++;
+  const st = check(c.starter, c.tests, c.files);
+  if (st.passed) fail(`${where} starter`, "passes without any work");
+  if (st.feedback.startsWith("The rune-checker tripped")) fail(`${where} starter`, `checker crashed: ${st.feedback}`);
+
+  c.wrong.forEach((w, i) => {
+    count++;
+    const res = check(w, c.tests, c.files);
+    if (res.passed) fail(`${where} wrong#${i}`, "passes but should fail");
+    else if (res.feedback.startsWith("The rune-checker tripped")) fail(`${where} wrong#${i}`, `checker crashed: ${res.feedback}`);
+    else if (process.argv.includes("-v")) console.log(`  ${where} wrong#${i}: ${res.status === "error" ? res.type + ": " + res.message : res.feedback}`);
+  });
+}
+
 const ids = new Set();
 for (const building of BUILDINGS) {
   for (const c of building.challenges) if (ids.has(c.id)) fail(`${building.id}/${c.id}`, "duplicate id");
@@ -99,40 +135,17 @@ for (const building of BUILDINGS) {
     if (!building.chronicle) fail(`buildings/${building.id}`, "needs its Chronicle page (STORY.md)");
     if (!building.opening.length || !building.finale.length) fail(`buildings/${building.id}`, "needs opening and finale lines");
   }
-  for (const c of building.challenges) {
-    const where = `${building.id}/${c.id}`;
-    if (!c.topic?.trim()) fail(where, "needs a topic");
-    for (const p of c.codex) {
-      if (!codexById.has(p)) fail(where, `unknown codex page ${p}`);
-      else if (pageHome.get(p) > Math.max(at, 1)) fail(where, `codex page ${p} is taught in a later building`);
-    }
+  for (const c of building.challenges) checkChallenge(`${building.id}/${c.id}`, c, at);
+}
 
-    // Quiz: the marked answer must be what really happens.
-    count++;
-    const q = exec(c.quiz.code);
-    const want = c.quiz.options[c.quiz.answer];
-    const got = q.status === "error" ? q.type : q.output.trimEnd() === "" ? "(nothing)" : q.output.trimEnd();
-    if (got !== want) fail(`${where} quiz`, `answer says ${JSON.stringify(want)} but Python gives ${JSON.stringify(got)}`);
-    const others = c.quiz.options.filter((_, i) => i !== c.quiz.answer);
-    if (others.includes(got)) fail(`${where} quiz`, "two options are the same as the real output");
-
-    count++;
-    const sol = check(c.solution, c.tests, c.files);
-    if (!sol.passed) fail(`${where} solution`, `fails: ${sol.status} ${sol.type ?? ""} ${sol.message ?? ""} ${sol.feedback}`);
-
-    count++;
-    const st = check(c.starter, c.tests, c.files);
-    if (st.passed) fail(`${where} starter`, "passes without any work");
-    if (st.feedback.startsWith("The rune-checker tripped")) fail(`${where} starter`, `checker crashed: ${st.feedback}`);
-
-    c.wrong.forEach((w, i) => {
-      count++;
-      const res = check(w, c.tests, c.files);
-      if (res.passed) fail(`${where} wrong#${i}`, "passes but should fail");
-      else if (res.feedback.startsWith("The rune-checker tripped")) fail(`${where} wrong#${i}`, `checker crashed: ${res.feedback}`);
-      else if (process.argv.includes("-v")) console.log(`  ${where} wrong#${i}: ${res.status === "error" ? res.type + ": " + res.message : res.feedback}`);
-    });
-  }
+// Village runes (src/life): same checks; they may use what's taught up to the building they need.
+const runeIds = new Set();
+for (const r of LIFE_RUNES) {
+  if (ids.has(r.id) || runeIds.has(r.id)) fail(`life/${r.id}`, "duplicate id");
+  runeIds.add(r.id);
+  const at = BUILDINGS.findIndex((b) => b.id === r.requires);
+  if (at < 0) fail(`life/${r.id}`, `requires "${r.requires}", which is not a building`);
+  else if (!only.length || only.includes("life")) checkChallenge(`life/${r.id}`, r, at);
 }
 
 // Villagers: every profile is complete, and every building's villager has one.

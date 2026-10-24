@@ -1,0 +1,115 @@
+/* Village life: the bag, the gift picker and item toasts (field-journal style, tokens from style.css). */
+.bag {
+  --w: 760px;
+}
+.bag-body {
+  display: grid;
+  grid-template-columns: 1fr 250px;
+  gap: 22px;
+  padding: 18px 26px 24px;
+  overflow: auto;
+  min-height: 260px;
+}
+.bag-groups .label {
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  margin: 4px 0 8px;
+}
+.bag-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(58px, 1fr));
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.bag-slot {
+  position: relative;
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  background: var(--paper-2);
+  color: var(--ink);
+  cursor: pointer;
+  transition: transform 0.12s, border-color 0.12s, box-shadow 0.12s;
+}
+.bag-slot:hover {
+  transform: translateY(-1px);
+  border-color: var(--ink-3);
+}
+.bag-slot.on {
+  border-color: var(--rune-deep);
+  box-shadow: 0 0 0 3px rgba(45, 110, 96, 0.15);
+}
+.bag-slot .item-ico {
+  width: 34px;
+  height: 34px;
+}
+.bag-slot .n {
+  position: absolute;
+  right: 5px;
+  bottom: 3px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-2);
+}
+.bag-slot .loved {
+  position: absolute;
+  left: 4px;
+  top: 3px;
+}
+.bag-slot .loved .ico {
+  width: 13px;
+  height: 13px;
+}
+.bag-info {
+  border-left: 1px solid var(--rule);
+  padding-left: 20px;
+}
+.bag-info .big .item-ico {
+  width: 56px;
+  height: 56px;
+  margin-bottom: 6px;
+}
+.bag-info p {
+  line-height: 1.55;
+  color: var(--ink-2);
+}
+.bag-info .small {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  font-size: 0.85rem;
+}
+.bag-info .small .ico {
+  width: 16px;
+  height: 16px;
+}
+.bag-empty {
+  grid-column: 1 / -1;
+  color: var(--ink-3);
+  text-align: center;
+  margin: 50px 0;
+}
+.item-toast .item-ico {
+  width: 22px;
+  height: 22px;
+}
+.ico.full {
+  fill: #c9564b;
+  stroke: #c9564b;
+}
+@media (max-width: 640px) {
+  .bag-body {
+    grid-template-columns: 1fr;
+  }
+  .bag-info {
+    border-left: 0;
+    border-top: 1px solid var(--rule);
+    padding: 14px 0 0;
+  }
+}

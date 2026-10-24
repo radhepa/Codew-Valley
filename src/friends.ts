@@ -19,7 +19,7 @@ export const GAIN = {
   pipPart: 10,
 };
 
-const today = () => new Date().toLocaleDateString("en-CA");
+export const today = () => new Date().toLocaleDateString("en-CA");
 
 export function bond(id: string): Bond {
   return (store.data.friends[id] ??= { points: 0, met: false, talkedOn: "", asked: [], milestones: 0, heard: 0 });

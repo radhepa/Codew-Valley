@@ -18,6 +18,12 @@ import type { Person } from "../content/types.ts";
 import { answer, befriend, bond, chat, GAIN, hearts, meet, type Gain } from "../friends.ts";
 import { friendsBook, heartRow } from "./friendsbook.ts";
 import { chronicleSheet } from "./chronicle.ts";
+import { installLife } from "../life/index.ts";
+import type { LifeApp, LifeRune } from "../life/context.ts";
+import { bagSheet, giftPicker, itemIcon } from "../life/bagbook.ts";
+import { canGift, give, knownLoves } from "../life/gifts.ts";
+import { item } from "../life/items.ts";
+import { markRune, runeSolved } from "../life/save.ts";
 
 const ICON: Record<Resource, string> = { wood: icon("wood"), stone: icon("stone") };
 const ROMAN = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X", "XI", "XII"];
@@ -32,6 +38,8 @@ export class App {
   private resEls: Record<Resource, HTMLElement> = {} as never;
   private questEl = el(`<div class="plate quest" aria-live="polite"></div>`);
   private toastTimer = 0;
+  private hudButtons!: HTMLElement;
+  private hotkeys = new Map<string, () => void>();
 
   constructor(private runner: PythonRunner) {}
 
@@ -87,12 +95,15 @@ export class App {
       res.append(r);
     }
     const buttons = el(`<div class="hud-buttons">
+      <button class="plate icon-btn bag-btn" title="Bag (B)" aria-label="Open your bag">${icon("bag")}</button>
       <button class="plate icon-btn friends-btn" title="Friends (F)" aria-label="Open your friends journal">${icon("people")}</button>
       <button class="plate icon-btn codex-btn" title="The Codex (C)" aria-label="Open the Codex">${icon("book")}</button>
       <button class="plate icon-btn mute-btn" title="Sound on/off (M)" aria-label="Toggle sound">${icon("sound")}</button>
     </div>`);
     buttons.querySelector(".codex-btn")!.addEventListener("click", () => this.openCodex());
     buttons.querySelector(".friends-btn")!.addEventListener("click", () => this.openFriends());
+    buttons.querySelector(".bag-btn")!.addEventListener("click", () => this.openBag());
+    this.hudButtons = buttons;
     const mute = buttons.querySelector<HTMLButtonElement>(".mute-btn")!;
     soundButton(mute, this.ui);
     installUiSounds(this.ui);
@@ -101,6 +112,7 @@ export class App {
     store.on(() => this.drawHud());
     this.drawHud();
     this.syncVillagers();
+    installLife({ world, app: this.lifeApp() });
     window.addEventListener("keydown", (e) => {
       if ((e.target as HTMLElement).closest?.("input, textarea, .cm-editor")) return;
       if (e.key === "Escape") {
@@ -108,6 +120,8 @@ export class App {
         else if (this.dialogEl) this.closeDialog();
       } else if (e.key.toLowerCase() === "c" && !this.modal && !this.dialogEl && !this.world.paused) this.openCodex();
       else if (e.key.toLowerCase() === "f" && !this.modal && !this.dialogEl && !this.world.paused) this.openFriends();
+      else if (e.key.toLowerCase() === "b" && !this.modal && !this.dialogEl && !this.world.paused) this.openBag();
+      else if (!this.modal && !this.dialogEl && !this.world.paused && this.hotkeys.has(e.key.toLowerCase())) this.hotkeys.get(e.key.toLowerCase())!();
       else if (e.key.toLowerCase() === "m") sfx.toggleMute();
     });
   }
@@ -468,6 +482,84 @@ export class App {
 
   // ---- characters -------------------------------------------------------------
 
+  openBag() {
+    this.openModal(bagSheet(() => this.closeModal()));
+  }
+
+  /** Pick something from the bag for this villager; they react in dialogue. */
+  private openGift(p: Person) {
+    const sheet = giftPicker(p, new Set(knownLoves(p.id)), (id) => {
+      this.closeModal();
+      const r = give(p, id);
+      if (!r) return;
+      sfx.pass();
+      void this.say([{ who: p.name, text: r.line }, ...(r.gain?.milestones ?? []).map((text) => ({ who: p.name, text }))]).then(() => this.heartToast(r.gain));
+    }, () => this.closeModal());
+    this.openModal(sheet);
+  }
+
+  /** What village life (src/life) can use from the HUD and the dialogue. */
+  private lifeApp(): LifeApp {
+    return {
+      ui: this.ui,
+      toast: (text) => this.toast(text),
+      gained: (id, n = 1) => this.itemToast(id, n),
+      say: (lines, buttons) => this.say(lines, buttons),
+      openSheet: (sheet) => this.openModal(sheet),
+      closeSheet: () => this.closeModal(),
+      finished: (id) => {
+        const b = BUILDINGS.find((x) => x.id === id);
+        return !!b && this.finished(b);
+      },
+      partsBuilt: (id) => {
+        const b = BUILDINGS.find((x) => x.id === id);
+        return b ? this.stageCount(b) : 0;
+      },
+      openRune: (rune, onSolved) => this.openLifeRune(rune, onSolved),
+      hudButton: (o) => {
+        const b = el<HTMLButtonElement>(`<button class="plate icon-btn" title="${esc(o.title)}${o.key ? ` (${o.key.toUpperCase()})` : ""}" aria-label="${esc(o.title)}">${o.icon}</button>`);
+        b.addEventListener("click", o.onClick);
+        this.hudButtons.insertBefore(b, this.hudButtons.querySelector(".codex-btn"));
+        if (o.key) this.hotkeys.set(o.key.toLowerCase(), o.onClick);
+        return b;
+      },
+      befriend: (id, points) => this.heartToast(befriend(id, points)),
+    };
+  }
+
+  /** "Got 3 × Trout", with the item's icon. */
+  private itemToast(id: string, n: number) {
+    const d = item(id);
+    if (!d) return;
+    this.ui.querySelector(".toast")?.remove();
+    const t = el(`<div class="plate toast item-toast" role="status">${itemIcon(d)}<span>Got ${n > 1 ? `${n} × ` : ""}<b>${esc(d.name)}</b></span></div>`);
+    this.ui.append(t);
+    clearTimeout(this.toastTimer);
+    this.toastTimer = window.setTimeout(() => t.remove(), 2600);
+  }
+
+  /** The workbench on a village rune instead of a building part. */
+  private openLifeRune(rune: LifeRune, onSolved: () => void) {
+    this.openModal(
+      workbench({
+        challenge: rune,
+        stage: 1,
+        total: 1,
+        runner: this.runner,
+        close: () => this.closeModal(),
+        openCodex: (p) => this.openCodex(p),
+        build: () => {
+          this.closeModal();
+          markRune(rune.id);
+          music.sting("stage");
+          onSolved();
+        },
+        village: true,
+        solved: runeSolved(rune.id),
+      }),
+    );
+  }
+
   openFriends() {
     this.openModal(friendsBook(() => this.closeModal()));
   }
@@ -484,7 +576,9 @@ export class App {
     if (talk) lines.push(...talk.milestones.map((text) => ({ who: p.name, text })));
     const q = c.question;
     if (!q) {
-      await this.say(lines);
+      // a gift can follow any chat that doesn't end in a question
+      const gift = canGift(p.id) ? [{ label: "Give a gift", cls: "gold", action: () => this.openGift(p) }, { label: "Goodbye", cls: "quiet", action: () => {} }] : undefined;
+      await this.say(lines, gift);
       this.heartToast(talk);
       return;
     }

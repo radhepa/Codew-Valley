@@ -15,6 +15,8 @@ import { BUILDINGS } from "./content/index.ts";
 import { settings as soundSettings, soundLog } from "./game/audio.ts";
 import { music } from "./game/music.ts";
 import { soundscape } from "./game/soundscape.ts";
+import { allItems, bag } from "./life/items.ts";
+import { clock } from "./life/clock.ts";
 
 // Python starts loading straight away (in its worker) while the world builds.
 const runner = new PythonRunner();
@@ -69,4 +71,8 @@ window.__pv = {
   /** Force the weather ("clear", "drizzle", "rain", "storm", "rainbow"); time(0.5) is noon, hold = stop the clock. */
   weather: (kind: Parameters<World["weather"]["force"]>[0], now = false) => world.weather.force(kind, now),
   time: (tod: number, hold = false) => (world.weather.setTime(tod), (world.weather.hold = hold)),
+  /** Village life (src/life): item("trout", 3) puts it in the bag; items() lists every item id; day() starts the next day. */
+  item: (id: string, n = 1) => bag.add(id, n),
+  items: () => allItems().map((d) => d.id),
+  day: () => clock.advance(),
 };

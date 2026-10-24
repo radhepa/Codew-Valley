@@ -4,6 +4,8 @@ import type { Person } from "../content/types.ts";
 import { bond, hearts, MAX_HEARTS, PER_HEART, talkedToday } from "../friends.ts";
 import { icon } from "./icons.ts";
 import { esc, el } from "./md.ts";
+import { knownLoves } from "../life/gifts.ts";
+import { item } from "../life/items.ts";
 import { portrait } from "./portrait.ts";
 
 /** A row of hearts, filled up to h. */
@@ -66,6 +68,7 @@ export function friendsBook(close: () => void): HTMLElement {
     const h = hearts(p.id);
     const pts = bond(p.id).points;
     const toNext = h >= MAX_HEARTS ? "" : `${PER_HEART - (pts % PER_HEART)} to the next heart`;
+    const loves = knownLoves(p.id).map((id) => item(id)?.name ?? id);
     const locked = (need: number) => `<p class="locked">${icon("lock")} Reach ${need} hearts to learn this.</p>`;
     const card = el(`<article>
       <header class="friend-head">
@@ -81,7 +84,8 @@ export function friendsBook(close: () => void): HTMLElement {
       <section><div class="label">Likes</div>${h >= 2 ? `<p>${p.likes.map(esc).join(" · ")}</p>` : locked(2)}</section>
       <section><div class="label">Dislikes</div>${h >= 4 ? `<p>${p.dislikes.map(esc).join(" · ")}</p>` : locked(4)}</section>
       <section><div class="label">What they wish for</div>${h >= 6 ? `<p>${esc(p.want)}</p>` : locked(6)}</section>
-      <p class="how">Talk to everyone once a day, answer their questions in a way that suits them, and help build their home. Heart events will open at 2, 4, 6, 8 and 10 hearts in a later update.</p>
+      ${loves.length ? `<section><div class="label">Gifts they loved</div><p>${loves.map(esc).join(" · ")}</p></section>` : ""}
+      <p class="how">Talk to everyone once a day, answer their questions in a way that suits them, give them a gift now and then, and help build their home. Heart events will open at 2, 4, 6, 8 and 10 hearts in a later update.</p>
     </article>`);
     void portrait(p.id).then((u) => u && (card.querySelector("img")!.src = u));
     page.append(card);

@@ -1,4 +1,4 @@
-import { BUILDINGS } from "../content/index.ts";
+import { PEOPLE } from "../content/people/index.ts";
 
 /** A line of dialogue and who says it. */
 export interface Line {
@@ -6,7 +6,9 @@ export interface Line {
   text: string;
 }
 
-const MODELS = new Map<string, string>([["Pip", "pip"], ...BUILDINGS.flatMap((b) => (b.villager ? [[b.villager.name, b.villager.model] as [string, string]] : []))]);
+// Every villager with a profile can speak in story lines, including those without a
+// building of their own (Lord Vane).
+const MODELS = new Map<string, string>(PEOPLE.map((p) => [p.name, p.id]));
 
 /** "Wren: Morning!" is Wren's line; anything else is Pip's. */
 export function toLine(s: string): Line {

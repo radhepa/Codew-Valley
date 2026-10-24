@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { model, preload, realModels } from "./models.ts";
 import { Particles } from "./particles.ts";
-import { Animator, SWING, lineup, type AnimName } from "./anim.ts";
+import { Animator, SWING, lineup, type AnyAnim } from "./anim.ts";
 import { Blinker } from "./blink.ts";
 import { sfx } from "./audio.ts";
 import { ATMOS, WEATHER_U, addWeather, createComposer, createHills, createMeadow, createSky } from "./atmosphere.ts";
@@ -44,6 +44,40 @@ interface Npc {
   label: string;
 }
 
+/**
+ * Something village life puts in the world to use: a field plot, a fishing spot, a stove.
+ * It gets a prompt when the player is close, E/Space or a click uses it.
+ */
+export interface Spot {
+  id: string;
+  pos: THREE.Vector3;
+  radius: number;
+  /** The prompt text, or null while it can't be used (no prompt, not clickable). */
+  label(): string | null;
+  use(): void;
+  /** What a click can hit (optional). */
+  obj?: THREE.Object3D;
+  /** Prompt height above pos, metres (default 1.6). */
+  height?: number;
+}
+
+/** A rectangle on the ground: centre and half-sizes. */
+export interface Area {
+  x: number;
+  z: number;
+  hw: number;
+  hd: number;
+}
+
+/**
+ * Ground kept flat and free of decor and meadow grass, like a building site. Village life
+ * reserves its areas (the farm plot) at import time, before the world is built.
+ */
+const RESERVED: Area[] = [];
+export function reserveArea(a: Area) {
+  RESERVED.push(a);
+}
+
 interface Collider {
   x: number;
   z: number;
@@ -60,7 +94,8 @@ const RUNE_POS = new THREE.Vector3(6.2, 0, -1.6);
 const PIP_POS = new THREE.Vector3(7.4, 0, -0.9);
 const MILL_POS = new THREE.Vector3(-9, 0, -19);
 const SPAWN = new THREE.Vector3(0, 0, 9);
-const POND = { x: 13, z: 9, r: 4.2 };
+/** The pond: centre and radius on the ground. */
+export const POND = { x: 13, z: 9, r: 4.2 };
 /** Dirt paths (polyline points on the ground). */
 const PATHS: [number, number][][] = [
   [
@@ -230,7 +265,7 @@ function defaultCine(s: Site) {
   return { look: [s.area.x, s.height * 0.4, s.area.z] as [number, number, number], view: [s.area.x + d * 0.3, s.height * 0.4 + d * 0.42, s.area.z + d * 0.9] as [number, number, number] };
 }
 
-/** 1 inside a site's area, fading to 0 four metres out. */
+/** 1 inside a site's (or reserved) area, fading to 0 four metres out. */
 function siteMask(x: number, z: number) {
   let m = 0;
   for (const s of Object.values(SITES)) {
@@ -238,7 +273,19 @@ function siteMask(x: number, z: number) {
     const dz = Math.max(0, Math.abs(z - s.pos.z - s.area.z) - s.area.hd);
     m = Math.max(m, 1 - Math.min(1, Math.hypot(dx, dz) / 4));
   }
+  for (const a of RESERVED) {
+    const dx = Math.max(0, Math.abs(x - a.x) - a.hw);
+    const dz = Math.max(0, Math.abs(z - a.z) - a.hd);
+    m = Math.max(m, 1 - Math.min(1, Math.hypot(dx, dz) / 4));
+  }
   return m;
+}
+
+/** Where a building stands: its position and its kept-clear area (world coordinates). */
+export function siteInfo(id: string): { pos: THREE.Vector3; area: Area; villager?: THREE.Vector3 } | null {
+  const s = SITES[id];
+  if (!s) return null;
+  return { pos: s.pos.clone(), area: { x: s.pos.x + s.area.x, z: s.pos.z + s.area.z, hw: s.area.hw, hd: s.area.hd }, villager: s.villager?.clone() };
 }
 
 function noise2(x: number, z: number) {
@@ -276,7 +323,7 @@ function puddleSpots() {
   return spots;
 }
 
-function groundHeight(x: number, z: number) {
+export function groundHeight(x: number, z: number) {
   const r = Math.hypot(x, z);
   let y = 0;
   if (r > PLAY_RADIUS - 2) {
@@ -352,7 +399,7 @@ export class World {
   private butterflies: { obj: THREE.Object3D; phase: number; center: THREE.Vector3 }[] = [];
   private keys = new Set<string>();
   private target: THREE.Vector3 | null = null;
-  private pendingInteract: Node | Npc | null = null;
+  private pendingInteract: Node | Npc | Spot | null = null;
   private facing = Math.PI;
   private cooldown = 0;
   private zoom = 1.2;
@@ -364,7 +411,11 @@ export class World {
   private smokeTimer = 0;
   private time = 0;
   private raycaster = new THREE.Raycaster();
-  private nearest: Node | Npc | null = null;
+  private nearest: Node | Npc | Spot | null = null;
+  private spots = new Map<string, Spot>();
+  private frameHooks = new Set<(dt: number, time: number) => void>();
+  /** Freezes walking (a minigame is running) while the world keeps animating. */
+  hold = false;
   private composer: EffectComposer;
   private tickSky: (t: number, camera: THREE.Camera) => void = () => {};
   private tickMeadow: (wet: number) => void = () => {};
@@ -674,6 +725,7 @@ export class World {
     const clear = (x: number, z: number, pad = 0) => {
       if (pathDist(x, z) < 1.5 + pad) return false;
       for (const st of Object.values(SITES)) if (Math.abs(x - st.pos.x - st.area.x) < st.area.hw + pad && Math.abs(z - st.pos.z - st.area.z) < st.area.hd + pad) return false;
+      for (const a of RESERVED) if (Math.abs(x - a.x) < a.hw + pad && Math.abs(z - a.z) < a.hd + pad) return false;
       if (Math.hypot(x - POND.x, z - POND.z) < POND.r + 1 + pad) return false;
       if (Math.hypot(x - RUNE_POS.x, z - RUNE_POS.z) < 2.5 + pad) return false;
       for (const n of this.nodes) if (Math.hypot(x - n.pos.x, z - n.pos.z) < n.radius + 1.2 + pad) return false;
@@ -809,8 +861,9 @@ export class World {
       if (this.paused || this.cinematic || e.button !== 0) return;
       const ndc = new THREE.Vector2((e.clientX / canvas.clientWidth) * 2 - 1, -(e.clientY / canvas.clientHeight) * 2 + 1);
       this.raycaster.setFromCamera(ndc, this.camera);
-      const things: (Node | Npc)[] = [...this.nodes.filter((n) => n.hp > 0), ...this.npcs];
-      const hits = this.raycaster.intersectObjects(things.map((t) => t.obj), true);
+      const usable = [...this.spots.values()].filter((sp) => sp.obj && sp.label() !== null);
+      const things: (Node | Npc | Spot)[] = [...this.nodes.filter((n) => n.hp > 0), ...this.npcs, ...usable];
+      const hits = this.raycaster.intersectObjects(things.map((t) => t.obj!), true);
       if (hits.length) {
         let o: THREE.Object3D | null = hits[0].object;
         while (o && !things.some((t) => t.obj === o)) o = o.parent;
@@ -835,7 +888,7 @@ export class World {
     });
   }
 
-  private inReach(t: Node | Npc) {
+  private inReach(t: Node | Npc | Spot) {
     return t.pos.distanceTo(this.player.position.clone().setY(0)) < t.radius + 1.5;
   }
 
@@ -843,8 +896,14 @@ export class World {
     if (this.nearest) this.doInteract(this.nearest);
   }
 
-  private doInteract(t: Node | Npc) {
+  private doInteract(t: Node | Npc | Spot) {
     this.facing = Math.atan2(t.pos.x - this.player.position.x, t.pos.z - this.player.position.z);
+    if ("use" in t) {
+      if (this.hold || t.label() === null) return;
+      this.keys.clear();
+      t.use();
+      return;
+    }
     if ("kind" in t) {
       if (this.cooldown > 0 || t.hp <= 0) return;
       const swing = SWING[t.kind === "wood" ? "chop" : "mine"];
@@ -940,7 +999,7 @@ export class World {
       this.hit(this.pendingHit.node);
       this.pendingHit = null;
     }
-    if (!this.cinematic && !this.paused) this.movePlayer(dt);
+    if (!this.cinematic && !this.paused && !this.hold) this.movePlayer(dt);
     else this.animatePlayer(dt, 0);
     if (!this.paused && this.keys.has("e") && this.nearest && "kind" in this.nearest) this.doInteract(this.nearest);
     this.updateNodes(dt);
@@ -950,6 +1009,7 @@ export class World {
     this.updateBuild(dt);
     this.updateCamera(dt);
     this.updatePrompt();
+    for (const f of this.frameHooks) f(dt, this.time);
     this.particles.update(dt);
     this.tickSky(this.time, this.camera);
     this.composer.render(dt);
@@ -1207,12 +1267,13 @@ export class World {
   }
 
   private updatePrompt() {
-    let best: Node | Npc | null = null;
+    let best: Node | Npc | Spot | null = null;
     let bestD = Infinity;
-    if (!this.paused && !this.cinematic) {
+    if (!this.paused && !this.cinematic && !this.hold) {
       const pp = this.player.position.clone().setY(0);
-      for (const t of [...this.nodes, ...this.npcs]) {
+      for (const t of [...this.nodes, ...this.npcs, ...this.spots.values()]) {
         if ("kind" in t && t.hp <= 0) continue;
+        if ("use" in t && t.label() === null) continue;
         const d = t.pos.distanceTo(pp) - t.radius;
         if (d < 1.5 && d < bestD) {
           best = t;
@@ -1222,13 +1283,14 @@ export class World {
     }
     this.nearest = best;
     if (!best) return this.hooks.prompt(null, 0, 0);
-    const label = "kind" in best ? (best.kind === "wood" ? "Chop" : "Mine") : best.label;
-    const top = best.pos.clone().add(new THREE.Vector3(0, "kind" in best ? (best.kind === "wood" ? 2.4 : 1.6) : 1.9, 0)).project(this.camera);
+    const label = "kind" in best ? (best.kind === "wood" ? "Chop" : "Mine") : "use" in best ? (best.label() ?? "") : best.label;
+    const h = "kind" in best ? (best.kind === "wood" ? 2.4 : 1.6) : "use" in best ? (best.height ?? 1.6) : 1.9;
+    const top = best.pos.clone().add(new THREE.Vector3(0, h, 0)).project(this.camera);
     this.hooks.prompt(label, ((top.x + 1) / 2) * innerWidth, ((1 - top.y) / 2) * innerHeight);
   }
 
   /** Dev: play an animation on the player, a villager (building id or model id), a lineup model, or "all". */
-  playAnim(name: AnimName, who = "player", big = false) {
+  playAnim(name: AnyAnim, who = "player", big = false) {
     const list = who === "all" ? [this.anim, ...this.animators.values()] : who === "player" ? [this.anim] : [...this.animators.entries()].filter(([k, a]) => k === who || k === `dev:${who}` || a.id === who).map(([, a]) => a);
     for (const a of list) a.play(name, { big });
     return list.length;
@@ -1243,5 +1305,61 @@ export class World {
   /** Where the player stands, for the dev hook. */
   teleport(x: number, z: number) {
     this.player.position.set(x, 0, z);
+  }
+
+  // ---- for village life (src/life) ------------------------------------------------
+
+  addSpot(spot: Spot) {
+    this.spots.set(spot.id, spot);
+  }
+
+  removeSpot(id: string) {
+    this.spots.delete(id);
+  }
+
+  /** Run every frame (dt and world time in seconds); returns a function that stops it. */
+  onFrame(fn: (dt: number, time: number) => void) {
+    this.frameHooks.add(fn);
+    return () => this.frameHooks.delete(fn);
+  }
+
+  /** Put an object in the world with the shared weather look (wet sheen, cloud shadows); optional collider radius. */
+  addProp(obj: THREE.Object3D, collide = 0) {
+    this.scene.add(obj);
+    obj.traverse((o) => (o as THREE.Mesh).isMesh && [(o as THREE.Mesh).material].flat().forEach(addWeather));
+    if (collide > 0) this.colliders.push({ x: obj.position.x, z: obj.position.z, r: collide });
+  }
+
+  /** The player's position on the ground (a copy) and the way they face (radians). */
+  get playerPos() {
+    return this.player.position.clone();
+  }
+  get playerFacing() {
+    return this.facing;
+  }
+  /** The player's root object (attach a fishing line to it, read its hand, ...). */
+  get playerObject(): THREE.Object3D {
+    return this.player;
+  }
+
+  /** Turn the player toward a point. */
+  face(p: THREE.Vector3) {
+    this.facing = Math.atan2(p.x - this.player.position.x, p.z - this.player.position.z);
+  }
+
+  /** Dust, chips and the wind they drift in (particles.ts). */
+  get fx() {
+    return this.particles;
+  }
+
+  /** World time in seconds since the game started. */
+  get now() {
+    return this.time;
+  }
+
+  /** Screen position (CSS pixels) of a world point, for floating UI. */
+  screenPos(p: THREE.Vector3) {
+    const v = p.clone().project(this.camera);
+    return { x: ((v.x + 1) / 2) * innerWidth, y: ((1 - v.y) / 2) * innerHeight, behind: v.z > 1 };
   }
 }

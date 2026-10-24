@@ -20,6 +20,8 @@ type ArmName = "arm_l" | "arm_r";
 export type LoopName = "idle" | "talk" | "cast";
 export type ClipName = "chop" | "mine" | "pickup" | "wave" | "celebrate" | "stretch" | "happy" | "fidget";
 export type AnimName = LoopName | ClipName | "walk" | "run" | "blink";
+/** An animation name, including clips other modules add with registerClip ("till", "cast_rod", ...). */
+export type AnyAnim = AnimName | (string & {});
 
 /** When the tool lands (seconds into the swing) and how long a swing lasts; the world syncs hits to these. */
 /** Tools are drawn a little bigger than life so they read from the game camera. */
@@ -32,7 +34,7 @@ export const SWING = {
 
 // ---- poses ---------------------------------------------------------------------
 
-class Pose {
+export class Pose {
   readonly v = {} as Record<PartName, Float32Array>;
   constructor() {
     for (const p of PARTS) this.v[p] = new Float32Array(6);
@@ -84,7 +86,7 @@ const bump = (t: number, a: number, b: number) => (t <= a || t >= b ? 0 : Math.s
 const env = (t: number, a: number, b: number, f = 0.12) => clamp01((t - a) / f) * clamp01((b - t) / f);
 
 /** A keyed scalar: [time, value, easing into this key]. */
-function curve(keys: [number, number, Ease?][]) {
+export function curve(keys: [number, number, Ease?][]) {
   return (t: number) => {
     let i = 0;
     while (i < keys.length - 2 && t >= keys[i + 1][0]) i++;
@@ -95,12 +97,12 @@ function curve(keys: [number, number, Ease?][]) {
 }
 
 /** Partial pose: [rx, ry, rz, px, py, pz] per part; missing parts and channels are 0. */
-type KeyPose = Partial<Record<PartName, number[]>>;
+export type KeyPose = Partial<Record<PartName, number[]>>;
 /** [time, pose, easing into this key (default in-out)] */
-type Key = [number, KeyPose, Ease?];
+export type Key = [number, KeyPose, Ease?];
 
 /** A keyframed clip body: adds the interpolated pose at t to P; s scales positions to the character. */
-function keyed(keys: Key[]) {
+export function keyed(keys: Key[]) {
   return (t: number, P: Pose, s = 1) => {
     let i = 0;
     while (i < keys.length - 2 && t >= keys[i + 1][0]) i++;
@@ -123,12 +125,13 @@ function keyed(keys: Key[]) {
 
 // ---- characters ----------------------------------------------------------------
 
-interface Clip {
+export interface Clip {
   dur: number;
   /** Parts the clip drives; the loop keeps the rest (so a wave works while walking). */
   parts: readonly PartName[];
   pose(t: number, P: Pose, a: Animator): void;
-  tool?: "axe" | "pickaxe";
+  /** A prop shown in the right hand while the clip plays (see TOOL_GRIPS / registerTool). */
+  tool?: string;
   /** Scale arm swings by the character's prop-arm limits. */
   gain?: boolean;
   /** Stops when the character starts moving. */
@@ -444,6 +447,41 @@ const CLIPS: Record<Exclude<ClipName, "wave" | "fidget">, Clip> = {
   },
 };
 
+// ---- clips and tools from other modules --------------------------------------------
+// Village life (src/life) adds its own clips and hand props here at import time, before
+// any character is built, so it never has to edit this file.
+
+const EXTRA_CLIPS: Record<string, Clip> = {};
+
+/** Add a one-shot clip that any character can play by name (the player mostly). */
+export function registerClip(name: string, clip: Clip) {
+  EXTRA_CLIPS[name] = clip;
+}
+
+/**
+ * How a hand prop is held: beta tilts the handle from straight down the arm toward the front
+ * (radians), and lead says which way its business end faces: "side" leads a sideways swing
+ * like the axe, "down" points along a downward strike like the pick.
+ */
+export interface ToolGrip {
+  beta: number;
+  lead: "side" | "down";
+  /** Defaults to TOOL_SCALE. */
+  scale?: number;
+}
+const TOOL_GRIPS: Record<string, ToolGrip> = {
+  axe: { beta: 0.61, lead: "side" },
+  pickaxe: { beta: 0.35, lead: "down" },
+};
+
+/** Add a hand prop (a model in public/models). Register before the world is built. */
+export function registerTool(name: string, grip: ToolGrip) {
+  TOOL_GRIPS[name] = grip;
+}
+
+/** Easing and envelope helpers for writing clips elsewhere. */
+export const ease = { io, easeIn, out, lin, back, bump, env, clamp01 };
+
 // ---- talk gestures --------------------------------------------------------------
 
 type Gesture = (T: ArmName) => KeyPose;
@@ -519,7 +557,7 @@ export class Animator {
   talkIntensity = 1;
   private tools = new Map<string, THREE.Object3D>();
   private tool: { name: string; t: number; idle: number } | null = null;
-  private queued: { name: AnimName; at: number; big: boolean } | null = null;
+  private queued: { name: AnyAnim; at: number; big: boolean } | null = null;
   /** The character's eyes (blink.ts); null for a model without house eyes. */
   readonly eyes: Blinker | null;
 
@@ -544,32 +582,32 @@ export class Animator {
   }
 
   /** Play an animation: a loop (idle, talk, cast; walk/run in place) or a one-shot clip. */
-  play(name: AnimName, opts: { big?: boolean; aim?: number } = {}) {
+  play(name: AnyAnim, opts: { big?: boolean; aim?: number } = {}) {
     if (name === "blink") {
       this.eyes?.blink(true);
       return;
     }
     if (name === "walk" || name === "run") {
-      this.forceMove = name;
+      this.forceMove = name as "walk" | "run";
       return;
     }
     if (name === "idle" || name === "talk" || name === "cast") {
       this.forceMove = null;
-      this.setLoop(name);
+      this.setLoop(name as LoopName);
       return;
     }
-    const clip = name === "wave" ? WAVE[this.style.wave] : name === "fidget" ? this.style.fidget : CLIPS[name];
+    const clip = name === "wave" ? WAVE[this.style.wave] : name === "fidget" ? this.style.fidget : (CLIPS[name as keyof typeof CLIPS] ?? EXTRA_CLIPS[name]);
     if (!clip) return;
     this.big = !!opts.big;
     this.aim = opts.aim ?? 0;
     this.snapshot(clip.fadeIn ?? 0.12);
-    this.action = { name, clip, t: 0 };
+    this.action = { name: name as ClipName, clip, t: 0 };
     this.idleT = 0;
     if (clip.tool) this.showTool(clip.tool);
   }
 
   /** Play an animation after a delay (replaces anything already queued). */
-  queue(name: AnimName, delay: number, opts: { big?: boolean } = {}) {
+  queue(name: AnyAnim, delay: number, opts: { big?: boolean } = {}) {
     this.queued = { name, at: this.time + delay, big: !!opts.big };
   }
 
@@ -799,11 +837,11 @@ export class Animator {
 
   // ---- tools ----
 
-  /** Load the axe and pickaxe and put them in the right hand, hidden until needed. */
+  /** Load the hand props (axe, pickaxe and any registered ones) into the right hand, hidden until needed. */
   async attachTools() {
     const arm = this.joints.arm_r?.o;
     if (!arm) return;
-    await preload(["axe", "pickaxe"]);
+    await preload(Object.keys(TOOL_GRIPS));
     // the mitten: the bottom of the arm's meshes (glTF splits a part per material), in the
     // arm's own space with the pivot at the shoulder
     const pts: THREE.Vector3[] = [];
@@ -822,14 +860,13 @@ export class Animator {
     const hand = new THREE.Vector3(low.reduce((a, q) => a + q.x, 0) / low.length, minY + 0.064, low.reduce((a, q) => a + q.z, 0) / low.length);
     const along = hand.clone().normalize();
     // the axe swings sideways (edge leading to the left); the pick strikes down (point leading)
-    const grips: Record<string, number> = { axe: 0.61, pickaxe: 0.35 };
-    for (const name of ["axe", "pickaxe"]) {
+    for (const [name, grip] of Object.entries(TOOL_GRIPS)) {
       if (!realModels.has(name)) continue;
       const tool = await model(name);
-      const beta = grips[name];
+      const beta = grip.beta;
       const H = along.clone().multiplyScalar(Math.cos(beta)).add(new THREE.Vector3(0, 0, Math.sin(beta))).normalize();
       // the edge leads the swing: across into the side of the trunk for the axe, down for the pick
-      const E = name === "axe" ? new THREE.Vector3(1, 0, 0) : new THREE.Vector3().crossVectors(new THREE.Vector3(1, 0, 0), H).normalize();
+      const E = grip.lead === "side" ? new THREE.Vector3(1, 0, 0) : new THREE.Vector3().crossVectors(new THREE.Vector3(1, 0, 0), H).normalize();
       E.sub(H.clone().multiplyScalar(E.dot(H))).normalize();
       const X = new THREE.Vector3().crossVectors(H, E);
       const holder = new THREE.Object3D();
@@ -838,7 +875,7 @@ export class Animator {
       holder.userData.grip = holder.quaternion.clone();
       holder.position.copy(hand);
       // a touch oversized, like the tools in Animal Crossing, so they read from the game camera
-      tool.scale.setScalar(TOOL_SCALE);
+      tool.scale.setScalar(grip.scale ?? TOOL_SCALE);
       holder.add(tool);
       holder.visible = false;
       arm.add(holder);

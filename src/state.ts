@@ -19,6 +19,10 @@ export interface SaveData {
   opened: string[];
   /** Friendship with each villager, by person id (see friends.ts). */
   friends: Record<string, Bond>;
+  /** The bag: how many of each item (src/life/items.ts) the founder carries. */
+  items: Record<string, number>;
+  /** Each village-life system's own save, by system id (src/life/save.ts). */
+  life: Record<string, unknown>;
 }
 
 export interface Bond {
@@ -32,9 +36,13 @@ export interface Bond {
   milestones: number;
   /** How many lines they've said, to cycle through them. */
   heard: number;
+  /** Local date of the last gift (one gift a day). */
+  giftedOn?: string;
+  /** Item ids given so far, for the journal. */
+  gifts?: string[];
 }
 
-const fresh = (): SaveData => ({ wood: 0, stone: 0, done: [], drafts: {}, hints: {}, quiz: {}, introSeen: false, opened: [], friends: {} });
+const fresh = (): SaveData => ({ wood: 0, stone: 0, done: [], drafts: {}, hints: {}, quiz: {}, introSeen: false, opened: [], friends: {}, items: {}, life: {} });
 
 function load(): SaveData {
   try {
