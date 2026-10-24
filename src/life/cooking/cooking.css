@@ -581,8 +581,8 @@
   color: var(--gold);
 }
 .cook-card.perfect .eyebrow {
-  color: #ffd98a;
-  text-shadow: 0 0 12px rgba(255, 200, 100, 0.6);
+  color: #b0761f;
+  text-shadow: 0 0 10px rgba(255, 210, 120, 0.7);
 }
 .cc-name {
   font-family: var(--display);

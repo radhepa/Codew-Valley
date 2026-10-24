@@ -642,19 +642,46 @@ export class App {
   titleScreen(onStart: () => void) {
     const hasSave = store.hasSave;
     const [first, second] = GAME_TITLE.split(" & ");
+    // A painted game logo (SVG lettering with an outline and a wooden drop), a ribbon,
+    // wooden signboard buttons and petals drifting over the valley.
+    const logoText = (cls: string) => `<text class="${cls}" x="450" y="150" text-anchor="middle">${esc(first)} <tspan class="amp">&amp;</tspan></text>
+        <text class="${cls}" x="450" y="300" text-anchor="middle">${esc(second ?? "")}</text>`;
+    const twinkle = (x: number, y: number, s: number, d: number) =>
+      `<path class="twinkle" style="animation-delay:${d}s" transform="translate(${x} ${y}) scale(${s})" d="M0-10C1-3 3-1 10 0C3 1 1 3 0 10C-1 3-3 1-10 0C-3-1-1-3 0-10Z"/>`;
+    const petals = Array.from({ length: 16 }, (_, i) => {
+      const r = (n: number) => ((Math.sin(i * 12.9898 + n * 78.233) * 43758.5453) % 1 + 1) % 1;
+      return `<i style="--x:${(r(1) * 100).toFixed(1)}vw;--d:${(9 + r(2) * 9).toFixed(1)}s;--w:${(-r(3) * 18).toFixed(1)}s;--s:${(0.6 + r(4) * 0.7).toFixed(2)};--sway:${(20 + r(5) * 60).toFixed(0)}px"></i>`;
+    }).join("");
     const screen = el(`<div class="title-screen">
-      <div class="eyebrow">A valley built in Python</div>
-      <h1>${esc(first)} <em>&amp;</em><br>${esc(second ?? "")}</h1>
-      <p class="tag">Found a village from nothing. Learn the Old Tongue, and every line you write raises another wall.</p>
-      <div class="row"></div>
-      <div class="foot">
-        <span class="status status-dot"></span>
-        <span class="controls"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> walk <kbd>E</kbd> gather and talk <kbd>C</kbd> Codex</span>
+      <div class="petals" aria-hidden="true">${petals}</div>
+      <div class="title-center">
+        <h1 class="logo" aria-label="${esc(GAME_TITLE)}">
+          <svg viewBox="0 0 900 340" aria-hidden="true">
+            <defs>
+              <linearGradient id="logo-fill" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stop-color="#fff6dc"/><stop offset=".45" stop-color="#f7d68c"/><stop offset="1" stop-color="#d9973c"/>
+              </linearGradient>
+              <linearGradient id="amp-fill" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stop-color="#b8f0da"/><stop offset="1" stop-color="#3c977a"/>
+              </linearGradient>
+            </defs>
+            <g class="logo-drop">${logoText("drop")}</g>
+            <g class="logo-face">${logoText("face")}</g>
+            ${twinkle(118, 70, 1.4, 0)}${twinkle(800, 112, 1, 1.1)}${twinkle(760, 232, 1.6, 2.2)}${twinkle(160, 262, 0.9, 0.6)}
+          </svg>
+        </h1>
+        <div class="ribbon"><span>A cozy valley built in Python</span></div>
+        <nav class="title-menu"></nav>
+      </div>
+      <div class="title-foot">
+        <span class="plate status status-dot"></span>
+        <span class="plate controls"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> walk <kbd>E</kbd> gather &amp; talk <kbd>C</kbd> Codex</span>
       </div>
     </div>`);
-    const row = screen.querySelector<HTMLElement>(".row")!;
+    const row = screen.querySelector<HTMLElement>(".title-menu")!;
     const status = screen.querySelector<HTMLElement>(".status")!;
-    const begin = el<HTMLButtonElement>(`<button class="btn gold">${hasSave ? "Continue" : "Begin"} ${icon("arrow")}</button>`);
+    const sign = (label: string, ico: string) => el<HTMLButtonElement>(`<button class="sign">${icon(ico)}<span>${label}</span></button>`);
+    const begin = sign(hasSave ? "Continue" : "Begin", "play");
     this.ui.classList.add("titling");
     begin.addEventListener("click", () => {
       sfx.click();
@@ -664,7 +691,7 @@ export class App {
     });
     row.append(begin);
     if (hasSave) {
-      const fresh = el<HTMLButtonElement>(`<button class="btn line">New game</button>`);
+      const fresh = sign("New game", "reset");
       fresh.addEventListener("click", () => {
         if (!confirm("Start over? Your village and code will be erased.")) return;
         store.reset();

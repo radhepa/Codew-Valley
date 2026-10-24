@@ -5,12 +5,12 @@ import { python } from "@codemirror/lang-python";
 import { HighlightStyle, syntaxHighlighting, indentUnit, bracketMatching } from "@codemirror/language";
 import { tags as t } from "@lezer/highlight";
 
-// A calm night-ink editor theme with warm syntax colours.
+// A dark walnut slate with warm syntax colours.
 const theme = EditorView.theme(
   {
-    "&": { backgroundColor: "#1b1e25", color: "#e9e3d5" },
+    "&": { backgroundColor: "#2b2119", color: "#f3e8d4" },
     ".cm-content": { fontFamily: "var(--mono)", padding: "12px 0", caretColor: "#d6b16a" },
-    ".cm-gutters": { backgroundColor: "#1b1e25", color: "#5a5f6b", border: "none", paddingLeft: "6px" },
+    ".cm-gutters": { backgroundColor: "#2b2119", color: "#86705a", border: "none", paddingLeft: "6px" },
     ".cm-activeLine": { backgroundColor: "rgba(255,255,255,0.04)" },
     ".cm-activeLineGutter": { backgroundColor: "transparent", color: "#c8bfac" },
     "&.cm-focused .cm-cursor": { borderLeftColor: "#d6b16a", borderLeftWidth: "2px" },
@@ -26,7 +26,7 @@ const highlight = HighlightStyle.define([
   { tag: [t.string, t.special(t.string)], color: "#a9c98a" },
   { tag: t.number, color: "#e3c27d" },
   { tag: [t.bool, t.null], color: "#e3c27d", fontWeight: "600" },
-  { tag: t.comment, color: "#737a88", fontStyle: "italic" },
+  { tag: t.comment, color: "#958069", fontStyle: "italic" },
   { tag: [t.function(t.variableName), t.function(t.propertyName)], color: "#8cc6d6" },
   { tag: t.standard(t.variableName), color: "#8cc6d6" },
   { tag: t.propertyName, color: "#d9c3a5" },
