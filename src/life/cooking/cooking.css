@@ -1,0 +1,798 @@
+/* Cooking: the recipe book and station sheets (paper), the cooking panel, reveal card,
+   recipe cards and the villagers' basket (ink plates). Tokens from src/style.css. */
+
+/* ---- the book ---- */
+.cook-book {
+  --w: 860px;
+}
+.cook-tabs {
+  display: flex;
+  gap: 6px;
+  padding: 12px 26px 0;
+  border-bottom: 1px solid var(--rule);
+}
+.cook-tab {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 14px 9px;
+  border: 1px solid transparent;
+  border-bottom: 0;
+  border-radius: 9px 9px 0 0;
+  background: none;
+  font: inherit;
+  font-weight: 700;
+  color: var(--ink-3);
+  cursor: pointer;
+  margin-bottom: -1px;
+}
+.cook-tab .ico {
+  width: 18px;
+  height: 18px;
+}
+.cook-tab .cnt {
+  font-size: 0.72rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-3);
+  background: var(--paper-2);
+  border-radius: 99px;
+  padding: 1px 7px;
+}
+.cook-tab.on {
+  color: var(--ink);
+  background: var(--paper);
+  border-color: var(--rule);
+}
+.cook-body {
+  display: grid;
+  grid-template-columns: 1fr 280px;
+  gap: 22px;
+  padding: 18px 26px 24px;
+  overflow: auto;
+  min-height: 330px;
+}
+.cook-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(118px, 1fr));
+  gap: 10px;
+  align-content: start;
+}
+.rc {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 12px 8px 10px;
+  border: 1px solid var(--rule);
+  border-radius: 12px;
+  background: var(--paper-2);
+  font: inherit;
+  color: var(--ink);
+  cursor: pointer;
+  text-align: center;
+  transition: transform 0.12s, border-color 0.12s, box-shadow 0.12s;
+}
+.rc:hover {
+  transform: translateY(-2px);
+  border-color: var(--ink-3);
+}
+.rc.on {
+  border-color: var(--rune-deep);
+  box-shadow: 0 0 0 3px rgba(45, 110, 96, 0.15);
+}
+.rc .plate-dot {
+  display: grid;
+  place-items: center;
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 42%, #fbf7ee 0 52%, #e9dfca 53% 62%, #f6f0e3 63%);
+  box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.05), 0 2px 4px rgba(60, 40, 20, 0.12);
+  margin-bottom: 4px;
+}
+.rc .plate-dot .item-ico {
+  width: 36px;
+  height: 36px;
+}
+.rc .nm {
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: 0.95rem;
+  line-height: 1.15;
+}
+.rc .sub {
+  font-size: 0.72rem;
+  color: var(--ink-3);
+}
+.rc.ready .sub {
+  color: var(--rune-deep);
+  font-weight: 700;
+}
+.rc.unknown {
+  background: repeating-linear-gradient(-45deg, var(--paper-2) 0 8px, var(--paper-3) 8px 9px);
+}
+.rc.unknown .nm {
+  color: var(--ink-3);
+  letter-spacing: 0.15em;
+}
+.rc.unknown .plate-dot {
+  background: radial-gradient(circle at 50% 42%, #ece3d1 0 52%, #ddd0b6 53% 62%, #e6dcc7 63%);
+}
+.item-ico.shadow {
+  color: #5a4f43 !important;
+  fill: #5a4f43;
+  fill-opacity: 0.85;
+  opacity: 0.5;
+  filter: blur(0.3px);
+}
+.rc.try {
+  border-style: dashed;
+  background: none;
+  justify-content: center;
+  min-height: 132px;
+}
+.rc.try .ico.big {
+  width: 34px;
+  height: 34px;
+  color: var(--gold-deep);
+  margin: 12px 0 6px;
+}
+.rc .new {
+  position: absolute;
+  top: 7px;
+  left: 7px;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #fff;
+  background: var(--rune-deep);
+  border-radius: 99px;
+  padding: 1px 6px;
+}
+.rc .asked {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+}
+.rc .asked .ico {
+  width: 15px;
+  height: 15px;
+}
+.cook-info {
+  border-left: 1px solid var(--rule);
+  padding-left: 20px;
+}
+.cook-info .big .item-ico {
+  width: 64px;
+  height: 64px;
+  margin-bottom: 4px;
+}
+.cook-info p {
+  line-height: 1.55;
+  color: var(--ink-2);
+}
+.cook-info .hint {
+  font-style: italic;
+}
+.cook-info .eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.ico.tiny {
+  width: 15px;
+  height: 15px;
+}
+.cook-info .small {
+  font-size: 0.84rem;
+  color: var(--ink-3);
+}
+.cook-info .asked-line {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  color: #a2433a;
+}
+.cook-info .asked-line .ico {
+  width: 15px;
+  height: 15px;
+}
+.needs {
+  list-style: none;
+  padding: 0;
+  margin: 10px 0 6px;
+  display: grid;
+  gap: 5px;
+}
+.needs li {
+  display: grid;
+  grid-template-columns: 24px 1fr auto;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 9px;
+  border-radius: 8px;
+  background: var(--paper-2);
+  font-size: 0.9rem;
+}
+.needs li .ico {
+  width: 22px;
+  height: 22px;
+}
+.needs li b {
+  font-variant-numeric: tabular-nums;
+  font-size: 0.8rem;
+  color: var(--rune-deep);
+}
+.needs li.short b {
+  color: var(--ember);
+}
+.needs li.pantry {
+  background: none;
+  border: 1px dashed var(--rule);
+  color: var(--ink-3);
+  font-size: 0.82rem;
+}
+.needs li.pantry b {
+  color: var(--ink-3);
+  font-weight: 600;
+}
+.cook-go {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin-top: 14px;
+}
+.cook-go .btn.gold {
+  flex: 1;
+  justify-content: center;
+}
+.batch {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.seg {
+  display: inline-flex;
+  border: 1px solid var(--rule);
+  border-radius: 9px;
+  overflow: hidden;
+  margin: 2px 0 12px;
+}
+.seg-b {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-weight: 700;
+  color: var(--ink-3);
+  cursor: pointer;
+}
+.seg-b .ico {
+  width: 17px;
+  height: 17px;
+}
+.seg-b.on {
+  background: var(--paper-3);
+  color: var(--ink);
+}
+.mix {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.mix-slot {
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  border: 2px dashed var(--rule);
+  background: var(--paper-2);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+.mix-slot.full {
+  border-style: solid;
+  border-color: var(--gold-deep);
+  background: #fbf6ea;
+  animation: mixIn 0.25s cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+.mix-slot .item-ico {
+  width: 32px;
+  height: 32px;
+}
+@keyframes mixIn {
+  from {
+    transform: scale(0.6);
+  }
+}
+.pick {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(46px, 1fr));
+  gap: 6px;
+  max-height: 190px;
+  overflow: auto;
+}
+.pick .bag-slot .item-ico {
+  width: 26px;
+  height: 26px;
+}
+.pick .bag-slot:disabled {
+  opacity: 0.4;
+  cursor: default;
+  transform: none;
+}
+
+/* ---- the cooking panel (an ink plate at the bottom) ---- */
+.cook-panel {
+  position: absolute;
+  left: 50%;
+  bottom: 88px;
+  transform: translateX(-50%);
+  width: min(560px, calc(100vw - 32px));
+  padding: 14px 18px 14px;
+  border-radius: 14px;
+  color: var(--cream);
+  animation: cpIn 0.35s cubic-bezier(0.2, 0.9, 0.3, 1);
+  z-index: 5;
+}
+.cook-panel.out {
+  animation: cpOut 0.3s ease forwards;
+}
+@keyframes cpIn {
+  from {
+    transform: translate(-50%, 24px);
+    opacity: 0;
+  }
+}
+@keyframes cpOut {
+  to {
+    transform: translate(-50%, 24px);
+    opacity: 0;
+  }
+}
+.cp-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.cp-dish {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(241, 233, 214, 0.1);
+  border: 1px solid var(--plate-line);
+}
+.cp-dish .item-ico {
+  width: 28px;
+  height: 28px;
+}
+.cp-dish.mystery .item-ico {
+  color: var(--cream-3) !important;
+  fill: var(--cream-3);
+}
+.cp-head .eyebrow {
+  color: var(--gold);
+}
+.cp-name {
+  font-family: var(--display);
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+.cp-steps {
+  margin: 0 0 0 auto;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  gap: 4px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.cp-steps li {
+  padding: 3px 8px;
+  border-radius: 99px;
+  color: var(--cream-3);
+  border: 1px solid var(--plate-line);
+}
+.cp-steps li.on {
+  color: var(--plate-solid);
+  background: var(--gold);
+  border-color: var(--gold);
+}
+.cp-steps li.done {
+  color: var(--rune);
+  border-color: rgba(95, 199, 173, 0.4);
+}
+.cp-say {
+  margin: 10px 2px 8px;
+  min-height: 1.4em;
+  color: var(--cream-2);
+}
+.cp-say.in {
+  animation: sayIn 0.3s ease;
+}
+@keyframes sayIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+.cp-gauge {
+  position: relative;
+  height: 18px;
+  margin: 4px 2px 22px;
+  border-radius: 99px;
+  background: linear-gradient(90deg, #3c4a5a, #6b5a3e 45%, #a35c33 85%, #7a2f22);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.45);
+}
+.cp-gauge .band {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  border-radius: 6px;
+  border: 2px solid var(--gold);
+  background: rgba(214, 177, 106, 0.22);
+  transition: box-shadow 0.2s;
+}
+.cp-gauge.sweet .band {
+  box-shadow: 0 0 14px rgba(255, 210, 120, 0.75);
+}
+.cp-gauge .fill {
+  position: absolute;
+  left: 0;
+  bottom: -7px;
+  height: 3px;
+  border-radius: 3px;
+  background: var(--rune);
+  width: 0;
+}
+.cp-gauge .mark {
+  position: absolute;
+  top: 50%;
+  width: 22px;
+  height: 22px;
+  margin: -11px 0 0 -11px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #fff, #f3e3c0 45%, #c9a35f);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+  transition: left 0.05s linear;
+}
+.cp-gauge .ends {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 24px;
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--cream-3);
+}
+.cp-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.cp-chips {
+  display: flex;
+  gap: 6px;
+  flex: 1;
+}
+.cp-chips .chip {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(241, 233, 214, 0.08);
+  border: 1px solid var(--plate-line);
+  transition: transform 0.2s, opacity 0.2s;
+}
+.cp-chips .chip .item-ico {
+  width: 22px;
+  height: 22px;
+}
+.cp-chips .chip.on {
+  border-color: var(--gold);
+  transform: scale(1.12);
+  background: rgba(214, 177, 106, 0.18);
+}
+.cp-chips .chip.done {
+  opacity: 0.35;
+  transform: scale(0.85);
+}
+.cp-press {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 18px;
+  border-radius: 12px;
+  border: 0;
+  background: var(--gold);
+  color: var(--plate-solid);
+  font: inherit;
+  font-weight: 800;
+  font-size: 1rem;
+  cursor: pointer;
+  box-shadow: 0 3px 0 var(--gold-deep);
+  touch-action: none;
+  user-select: none;
+}
+.cp-press[hidden] {
+  display: none;
+}
+.cp-press:active {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 var(--gold-deep);
+}
+.cp-press kbd {
+  font: inherit;
+  font-size: 0.7rem;
+  font-weight: 800;
+  padding: 2px 7px;
+  border-radius: 5px;
+  background: rgba(30, 33, 41, 0.18);
+}
+.cp-press.pop {
+  animation: press 0.18s ease;
+}
+.cp-press.nudge {
+  animation: nudge 1.2s ease-in-out infinite;
+}
+@keyframes press {
+  50% {
+    transform: scale(0.94);
+  }
+}
+@keyframes nudge {
+  50% {
+    transform: scale(1.06);
+    box-shadow: 0 3px 0 var(--gold-deep), 0 0 18px rgba(255, 210, 120, 0.6);
+  }
+}
+
+/* ---- the reveal card ---- */
+.cook-card {
+  position: absolute;
+  left: 50%;
+  top: 16%;
+  transform: translateX(-50%);
+  padding: 14px 30px 14px;
+  border-radius: 14px;
+  text-align: center;
+  color: var(--cream);
+  animation: ccIn 0.45s cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+.cook-card .eyebrow {
+  color: var(--gold);
+}
+.cook-card.perfect .eyebrow {
+  color: #ffd98a;
+  text-shadow: 0 0 12px rgba(255, 200, 100, 0.6);
+}
+.cc-name {
+  font-family: var(--display);
+  font-size: 1.7rem;
+  font-weight: 600;
+  margin: 2px 0;
+}
+.cc-sub {
+  color: var(--cream-2);
+  font-size: 0.9rem;
+}
+.cook-card.out {
+  animation: ccOut 0.4s ease forwards;
+}
+@keyframes ccIn {
+  from {
+    transform: translate(-50%, -10px) scale(0.8);
+    opacity: 0;
+  }
+}
+@keyframes ccOut {
+  to {
+    transform: translate(-50%, -12px);
+    opacity: 0;
+  }
+}
+
+/* ---- a recipe learned: a card that slides in at the left ---- */
+.cook-learn {
+  position: absolute;
+  left: 18px;
+  top: 50%;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  max-width: 330px;
+  padding: 12px 16px 12px 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(214, 177, 106, 0.45);
+  color: var(--cream);
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+  animation: clIn 0.5s cubic-bezier(0.2, 1.2, 0.4, 1);
+}
+.cook-learn.out {
+  animation: clOut 0.5s ease forwards;
+}
+.cl-dish {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 42%, #fbf7ee 0 52%, #e9dfca 53% 62%, #f6f0e3 63%);
+}
+.cl-dish .item-ico {
+  width: 34px;
+  height: 34px;
+}
+.cl-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.cl-text .eyebrow {
+  color: var(--gold);
+}
+.cl-name {
+  font-family: var(--display);
+  font-size: 1.15rem;
+  font-weight: 600;
+}
+.cl-note {
+  font-size: 0.84rem;
+  color: var(--cream-2);
+  font-style: italic;
+  line-height: 1.4;
+}
+@keyframes clIn {
+  from {
+    transform: translateX(-30px);
+    opacity: 0;
+  }
+}
+@keyframes clOut {
+  to {
+    transform: translateX(-30px);
+    opacity: 0;
+  }
+}
+
+/* ---- a villager's basket ---- */
+.cook-basket {
+  position: absolute;
+  left: 50%;
+  top: 70px;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 16px;
+  border-radius: 99px;
+  color: var(--cream);
+  animation: cbIn 0.4s cubic-bezier(0.2, 1.3, 0.4, 1);
+}
+.cook-basket .lbl {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+.cook-basket .it {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+.cook-basket .it .ico {
+  width: 24px;
+  height: 24px;
+}
+.cook-basket .it b {
+  font-variant-numeric: tabular-nums;
+}
+.cook-basket.out {
+  animation: cbOut 0.5s ease forwards;
+}
+@keyframes cbIn {
+  from {
+    transform: translate(-50%, -14px) scale(0.9);
+    opacity: 0;
+  }
+}
+@keyframes cbOut {
+  to {
+    transform: translate(-50%, -14px);
+    opacity: 0;
+  }
+}
+
+@media (max-width: 700px) {
+  .cook-body {
+    grid-template-columns: 1fr;
+  }
+  .cook-info {
+    border-left: 0;
+    border-top: 1px solid var(--rule);
+    padding: 14px 0 0;
+  }
+  .cp-steps {
+    display: none;
+  }
+}
+
+/* ---- kitchen runes along the bottom of the book ---- */
+.cook-runes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 26px 16px;
+  border-top: 1px solid var(--rule);
+}
+.cook-runes .lbl {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  margin-right: 4px;
+}
+.cook-runes .lbl .ico {
+  width: 16px;
+  height: 16px;
+}
+.rune-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px 6px 8px;
+  border: 1px solid var(--rune-deep);
+  border-radius: 10px;
+  background: rgba(95, 199, 173, 0.08);
+  font: inherit;
+  color: var(--ink);
+  cursor: pointer;
+  text-align: left;
+}
+.rune-chip .ico {
+  width: 20px;
+  height: 20px;
+  color: var(--rune-deep);
+}
+.rune-chip span {
+  display: flex;
+  flex-direction: column;
+}
+.rune-chip small {
+  color: var(--ink-3);
+  font-size: 0.74rem;
+}
+.rune-chip.solved {
+  border-color: var(--rule);
+  background: none;
+}
+.rune-chip:hover {
+  box-shadow: 0 0 0 3px rgba(45, 110, 96, 0.15);
+}

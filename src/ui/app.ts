@@ -22,6 +22,7 @@ import { installLife } from "../life/index.ts";
 import type { LifeApp, LifeRune } from "../life/context.ts";
 import { bagSheet, giftPicker, itemIcon } from "../life/bagbook.ts";
 import { canGift, give, knownLoves } from "../life/gifts.ts";
+import { villageChat } from "../life/cooking/pantry.ts";
 import { item } from "../life/items.ts";
 import { markRune, runeSolved } from "../life/save.ts";
 
@@ -574,6 +575,8 @@ export class App {
     const lines = [...before, ...c.lines.map((text) => ({ who: p.name, text }))];
     const talk = c.firstToday ? befriend(p.id, GAIN.talk) : null;
     if (talk) lines.push(...talk.milestones.map((text) => ({ who: p.name, text })));
+    // village life: a villager may share ingredients, or ask for (or take) a dish
+    lines.push(...villageChat(p.id).map((text) => ({ who: p.name, text })));
     const q = c.question;
     if (!q) {
       // a gift can follow any chat that doesn't end in a question
