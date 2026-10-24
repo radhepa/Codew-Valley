@@ -39,7 +39,8 @@ sys.settrace(_pg_tracer)
 `);
 const run = py.globals.get("_pg_run");
 const grade = py.globals.get("_pg_grade");
-const resetLines = () => py.runPython("_pg_lines[0] = 0");
+// Python drops the tracer when it raises, so put it back before every run.
+const resetLines = () => py.runPython("_pg_lines[0] = 0\nsys.settrace(_pg_tracer)");
 const toPy = (files) => (files ? py.toPy(files) : null);
 
 function exec(code, files) {
