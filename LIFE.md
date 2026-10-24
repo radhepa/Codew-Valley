@@ -1,4 +1,9 @@
-# Village life: farming, fishing, cooking
+# Village life: fishing and cooking
+
+**Farming was dropped (user, 2026-10-24).** Its crops (`src/life/farming/items.ts`)
+stay as cooking ingredients; cooking decides where they come from (a kitchen
+garden by the tavern, villagers sharing, foraging). The farming session is
+archived and `art/scripts/farming.py` is kept, unused.
 
 Phase 4 of `ROADMAP.md`, started early. Three cozy systems, each in its own folder
 under `src/life/`, built on a shared foundation. They should feel like part of
