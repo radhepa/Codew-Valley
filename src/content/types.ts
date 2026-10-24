@@ -120,6 +120,25 @@ export interface Person {
   questions: Question[];
   /** Said once on reaching 2, 4, 6, 8 and 10 hearts (until heart events exist). */
   milestones: [string, string, string, string, string];
+  /** The big pool of everyday lines, each with the moments it fits (see Saying). */
+  sayings?: Saying[];
+}
+
+/**
+ * One thing a villager might say. Unheard sayings come first, and ones that
+ * fit the moment (weather, time, a building just finished) are preferred.
+ */
+export interface Saying {
+  /** One line, or a few said in a row (a little story). */
+  say: string | string[];
+  /** Fewest hearts it needs (default 0) and the most it still fits (default 10). */
+  min?: number;
+  max?: number;
+  /** Only in this weather or time of day (morning, day, evening, night). */
+  when?: "rain" | "clear" | "morning" | "day" | "evening" | "night";
+  /** Only once this building (id) is finished, or only while it isn't yet. */
+  after?: string;
+  before?: string;
 }
 
 export interface Building {

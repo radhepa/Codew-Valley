@@ -1,5 +1,6 @@
-import type { Person, Question } from "./content/types.ts";
+import type { Person, Question, Saying } from "./content/types.ts";
 import { personById } from "./content/people/index.ts";
+import { BUILDINGS } from "./content/index.ts";
 import { weatherState } from "./game/weather-state.ts";
 import { store, type Bond } from "./state.ts";
 
@@ -78,14 +79,19 @@ export function chat(p: Person, extra: string[] = []): Chat {
   const b = bond(p.id);
   const firstToday = !talkedToday(p.id);
   const h = hearts(p.id);
-  const pools: string[][] = [p.talk[tier(h)]];
-  if (weatherState.rain > 0.4) pools.push(p.rain, p.rain);
-  const t = weatherState.timeOfDay;
-  if (t > 0.72 || t < 0.2) pools.push(p.evening);
-  if (extra.length) pools.push(extra);
-  // cycle through lines so the same one doesn't come twice in a row
-  const pool = pools[b.heard % pools.length].length ? pools[b.heard % pools.length] : pools[0];
-  const line = pool[Math.floor(b.heard / pools.length) % pool.length];
+  const pool = candidates(p, extra, h);
+  // unheard lines first; when they run out, the pool starts over
+  const seen = (b.seen ??= []);
+  let fresh = pool.filter((c) => !seen.includes(c.key));
+  if (!fresh.length) {
+    b.seen = seen.filter((k) => !pool.some((c) => c.key === k));
+    fresh = pool;
+  }
+  // lines that fit the moment win more often than plain ones
+  const fitting = fresh.filter((c) => c.fits);
+  const from = fitting.length && Math.random() < 0.6 ? fitting : fresh;
+  const pick = from[Math.floor(Math.random() * from.length)];
+  b.seen!.push(pick.key);
   b.heard++;
   let question: Question | undefined;
   if (firstToday) {
@@ -93,7 +99,47 @@ export function chat(p: Person, extra: string[] = []): Chat {
     question = p.questions.find((q) => q.minHearts <= h && !b.asked.includes(q.id));
   }
   store.changed();
-  return { lines: [line], question, firstToday };
+  return { lines: pick.lines, question, firstToday };
+}
+
+type Moment = NonNullable<Saying["when"]>;
+
+/** The weather and time of day right now, as the moments a Saying can ask for. */
+function moments(): Set<Moment> {
+  const t = weatherState.timeOfDay;
+  const now = new Set<Moment>([weatherState.rain > 0.4 ? "rain" : "clear"]);
+  now.add(t >= 0.2 && t < 0.42 ? "morning" : t < 0.72 && t >= 0.42 ? "day" : t >= 0.72 && t < 0.88 ? "evening" : "night");
+  return now;
+}
+
+const isFinished = (id: string) => {
+  const b = BUILDINGS.find((x) => x.id === id);
+  return !!b && b.challenges.length > 0 && b.challenges.every((c) => store.isDone(c.id));
+};
+
+interface Candidate {
+  key: string;
+  lines: string[];
+  /** Tied to this moment (weather, time, story), so it's preferred while it fits. */
+  fits: boolean;
+}
+
+/** Everything they could say right now. */
+function candidates(p: Person, extra: string[], h: number): Candidate[] {
+  const now = moments();
+  const out: Candidate[] = p.talk[tier(h)].map((text) => ({ key: text.slice(0, 48), lines: [text], fits: false }));
+  if (now.has("rain")) out.push(...p.rain.map((text) => ({ key: text.slice(0, 48), lines: [text], fits: true })));
+  if (now.has("evening") || now.has("night")) out.push(...p.evening.map((text) => ({ key: text.slice(0, 48), lines: [text], fits: true })));
+  out.push(...extra.map((text) => ({ key: text.slice(0, 48), lines: [text], fits: true })));
+  for (const s of p.sayings ?? []) {
+    if (h < (s.min ?? 0) || h > (s.max ?? MAX_HEARTS)) continue;
+    if (s.when && !now.has(s.when)) continue;
+    if (s.after && !isFinished(s.after)) continue;
+    if (s.before && isFinished(s.before)) continue;
+    const lines = typeof s.say === "string" ? [s.say] : s.say;
+    out.push({ key: lines[0].slice(0, 48), lines, fits: !!(s.when || s.after) });
+  }
+  return out;
 }
 
 /** Record an answer (each question is asked once) and return the points it earns. */

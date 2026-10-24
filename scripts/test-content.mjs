@@ -158,7 +158,17 @@ for (const p of PEOPLE) {
   if (p.milestones.length !== 5) fail(where, "needs 5 milestones (2, 4, 6, 8, 10 hearts)");
   if (!p.rain.length || !p.evening.length) fail(where, "needs rain and evening lines");
   if (p.home && !BUILDINGS.some((b) => b.id === p.home)) fail(where, `home "${p.home}" is not a building`);
-  const lines = [...p.talk.flat(), ...p.rain, ...p.evening, ...p.milestones, ...p.questions.flatMap((q) => [q.ask, ...q.choices.map((c) => c.reply)])];
+  const said = (p.sayings ?? []).flatMap((s) => (typeof s.say === "string" ? [s.say] : s.say));
+  const lines = [...p.talk.flat(), ...p.rain, ...p.evening, ...p.milestones, ...said, ...p.questions.flatMap((q) => [q.ask, ...q.choices.map((c) => c.reply)])];
+  const firsts = new Set();
+  for (const s of p.sayings ?? []) {
+    const first = typeof s.say === "string" ? s.say : s.say[0];
+    if (!first) fail(where, "has an empty saying");
+    else if (firsts.has(first.slice(0, 48))) fail(where, `two sayings start the same way: "${first.slice(0, 48)}"`);
+    firsts.add(first?.slice(0, 48));
+    if ((s.min ?? 0) > (s.max ?? 10)) fail(where, `saying "${first}" has min hearts above max`);
+    for (const id of [s.after, s.before]) if (id && !BUILDINGS.some((b) => b.id === id)) fail(where, `saying "${first}" names "${id}", which is not a building`);
+  }
   if (lines.some((l) => !l.trim())) fail(where, "has an empty line");
   if (lines.some((l) => l.startsWith(p.name + ":"))) fail(where, "lines are in their own voice; drop the 'Name:' prefix");
   for (const q of p.questions) {

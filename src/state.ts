@@ -36,6 +36,8 @@ export interface Bond {
   milestones: number;
   /** How many lines they've said, to cycle through them. */
   heard: number;
+  /** Lines said since their pool last ran dry, so nothing repeats too soon (friends.ts). */
+  seen?: string[];
   /** Local date of the last gift (one gift a day). */
   giftedOn?: string;
   /** Item ids given so far, for the journal. */
