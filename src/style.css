@@ -408,37 +408,27 @@ kbd {
   margin-top: -6vh;
   padding: 0 16px;
 }
-/* chunky lettering with a hard 6px outline and a ledge underneath, bobbing in two frames */
+/* the pixel wordmark (art/ui/make_logo.py draws it at 77x50), scaled by whole pixels and bobbing in two frames */
 .title-screen .logo {
+  --s: 7;
   margin: 0;
-  text-align: center;
-  font-family: var(--display);
-  font-weight: 700;
-  line-height: 1;
+  width: calc(77px * var(--s));
+  height: calc(50px * var(--s));
+  background: url("./ui/px/logo.png") center / 100% 100% no-repeat;
+  image-rendering: pixelated;
   animation:
     logoDrop 0.6s steps(5) both,
     logoBob 2.4s steps(2) 0.6s infinite;
 }
-.logo .l1,
-.logo .l2 {
-  display: block;
-  --o: #3b2014;
-  --w: 6px;
-  color: #ffe9a8;
-  font-size: clamp(64px, 11vw, 140px);
-  letter-spacing: 0.03em;
-  text-shadow:
-    var(--w) 0 0 var(--o), calc(var(--w) * -1) 0 0 var(--o), 0 var(--w) 0 var(--o), 0 calc(var(--w) * -1) 0 var(--o),
-    var(--w) var(--w) 0 var(--o), calc(var(--w) * -1) var(--w) 0 var(--o), var(--w) calc(var(--w) * -1) 0 var(--o), calc(var(--w) * -1) calc(var(--w) * -1) 0 var(--o),
-    0 calc(var(--w) * 2) 0 var(--o), var(--w) calc(var(--w) * 2) 0 var(--o), calc(var(--w) * -1) calc(var(--w) * 2) 0 var(--o),
-    0 calc(var(--w) * 3) 0 rgba(40, 20, 8, 0.35);
+@media (max-width: 900px), (max-height: 780px) {
+  .title-screen .logo {
+    --s: 5;
+  }
 }
-.logo .l2 {
-  --o: #123c38;
-  --w: 5px;
-  margin-top: 12px;
-  color: #8ff0d4;
-  font-size: clamp(42px, 7vw, 90px);
+@media (max-width: 480px), (max-height: 560px) {
+  .title-screen .logo {
+    --s: 4;
+  }
 }
 @keyframes logoDrop {
   from {
