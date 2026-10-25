@@ -662,6 +662,8 @@ export class Director {
       a.obj.rotation.y = a.home.rot;
     }
     this.actors.clear();
+    for (const e of this.emotes) e.el.remove();
+    this.emotes = [];
     for (const o of this.props.values()) {
       o.removeFromParent();
       o.traverse((m) => (m as THREE.Mesh).geometry?.dispose());
