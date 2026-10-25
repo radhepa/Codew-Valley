@@ -138,7 +138,6 @@ code {
   background: rgba(90, 70, 40, 0.1);
   border: 1px solid rgba(90, 70, 40, 0.12);
   padding: 0.05em 0.35em;
-  border-radius: 4px;
 }
 /* a pixel key cap: dark wood, a light top edge and a hard ledge */
 kbd {
@@ -359,17 +358,17 @@ kbd {
   background: transparent;
   width: 36px;
   height: 36px;
-  border-radius: 50%;
   display: grid;
   place-items: center;
   color: var(--ink-3);
   font-size: 1.1rem;
-  transition: background 0.15s, transform 0.12s;
+  transition: background 0.1s steps(2), transform 0.1s steps(2);
 }
 .close:hover {
-  background: rgba(196, 147, 82, 0.18);
+  background: rgba(196, 147, 82, 0.22);
+  box-shadow: inset 0 0 0 2px rgba(138, 90, 50, 0.35);
   color: var(--ink);
-  transform: rotate(6deg);
+  transform: translateY(-2px);
 }
 .link {
   color: var(--rune-deep);
@@ -1051,7 +1050,7 @@ kbd {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  animation: sheetIn 0.28s cubic-bezier(0.2, 0.8, 0.3, 1);
+  animation: sheetIn 0.24s steps(4);
 }
 @keyframes sheetIn {
   from {
@@ -1064,8 +1063,8 @@ kbd {
   align-items: flex-start;
   gap: 14px;
   padding: 20px 22px 16px 26px;
-  border-bottom: 1px solid var(--rule);
-  background: linear-gradient(180deg, rgba(236, 201, 138, 0.26), rgba(236, 201, 138, 0));
+  border-bottom: 2px solid var(--rule);
+  background: rgba(236, 201, 138, 0.2);
 }
 .modal-head .titles {
   flex: 1;
@@ -1083,12 +1082,11 @@ kbd {
 .modal-head .mark {
   width: 40px;
   height: 40px;
-  border-radius: 50%;
   display: grid;
   place-items: center;
-  background: var(--sel);
+  background: var(--wood);
   color: var(--bronze-light);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3), 0 2px 0 var(--wood-dark);
+  box-shadow: inset 0 3px 0 var(--wood-light), inset 0 -3px 0 var(--wood-dark), 0 0 0 2px var(--ink), 0 4px 0 2px rgba(40, 20, 8, 0.3);
   font-size: 1.2rem;
   flex: none;
   margin-top: 2px;
@@ -1177,10 +1175,9 @@ h3.section {
   flex: none;
   width: 26px;
   height: 26px;
-  border-radius: 50%;
   display: grid;
   place-items: center;
-  border: 1px solid var(--rule);
+  border: 2px solid var(--rule);
   font-weight: 700;
   font-size: 0.75rem;
   font-variant-numeric: tabular-nums;
@@ -1305,14 +1302,13 @@ button.stage:hover .tag {
   display: flex;
   gap: 2px;
   background: var(--paper-2);
-  border: 1px solid var(--rule);
-  border-radius: 999px;
+  border: 2px solid var(--rule);
+  box-shadow: inset 0 2px 0 rgba(138, 90, 50, 0.18);
   padding: 3px;
 }
 .step {
   border: 0;
   background: none;
-  border-radius: 999px;
   padding: 6px 13px 6px 8px;
   display: flex;
   align-items: center;
@@ -1325,12 +1321,11 @@ button.stage:hover .tag {
 .step .num {
   width: 20px;
   height: 20px;
-  border-radius: 50%;
   display: grid;
   place-items: center;
   font-size: 0.7rem;
   font-weight: 800;
-  border: 1px solid var(--rule);
+  border: 2px solid var(--rule);
 }
 .step .num .ico {
   width: 12px;
@@ -1340,9 +1335,9 @@ button.stage:hover .tag {
   color: var(--ink);
 }
 .step.on {
-  background: var(--sel);
+  background: var(--wood);
   color: var(--sel-ink);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3), 0 2px 0 var(--wood-dark);
+  box-shadow: inset 0 3px 0 var(--wood-light), 0 3px 0 var(--wood-dark);
 }
 .step.on .num {
   border-color: rgba(243, 236, 221, 0.35);
@@ -1459,20 +1454,19 @@ button.stage:hover .tag {
   display: flex;
 }
 .feedback.bad {
-  background: linear-gradient(90deg, rgba(196, 87, 58, 0.22), rgba(196, 87, 58, 0.08));
-  box-shadow: inset 3px 0 0 var(--ember);
+  background: rgba(196, 87, 58, 0.16);
+  box-shadow: inset 4px 0 0 var(--ember);
 }
 .feedback.good {
-  background: linear-gradient(90deg, rgba(95, 199, 173, 0.22), rgba(95, 199, 173, 0.06));
-  box-shadow: inset 3px 0 0 var(--rune);
+  background: rgba(95, 199, 173, 0.15);
+  box-shadow: inset 4px 0 0 var(--rune);
 }
 .feedback img {
   width: 38px;
   height: 38px;
-  border-radius: 50%;
   flex: none;
   background: #2a2e38;
-  box-shadow: 0 0 0 1.5px var(--gold);
+  box-shadow: 0 0 0 2px var(--gold), 0 3px 0 2px rgba(0, 0, 0, 0.3);
 }
 .feedback b {
   font-weight: 750;
@@ -1510,9 +1504,8 @@ button.stage:hover .tag {
 .say img {
   width: 40px;
   height: 40px;
-  border-radius: 50%;
-  background: radial-gradient(circle at 50% 35%, #fff4dc, #e3c592 78%);
-  box-shadow: 0 0 0 2px var(--wood), 0 2px 4px rgba(60, 36, 16, 0.2);
+  background: #f1dcae;
+  box-shadow: inset 0 0 0 2px #e3c592, 0 0 0 2px var(--wood), 0 3px 0 2px rgba(40, 20, 8, 0.25);
 }
 .say .who {
   font-size: 0.66rem;
@@ -1560,8 +1553,8 @@ button.stage:hover .tag {
   top: 1px;
   width: 22px;
   height: 22px;
-  border-radius: 50%;
-  background: var(--sel);
+  background: var(--wood);
+  box-shadow: inset 0 -2px 0 var(--wood-dark);
   color: var(--bronze-light);
   font-size: 0.72rem;
   font-weight: 800;
@@ -1763,8 +1756,7 @@ pre.out.err-out {
   font-size: 0.72rem;
   font-weight: 700;
   padding: 4px 9px;
-  border-radius: 5px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: 2px solid rgba(255, 255, 255, 0.14);
   background: rgba(255, 255, 255, 0.06);
   color: var(--cream-2);
 }
@@ -2067,12 +2059,11 @@ pre.out.err-out {
 .face {
   width: 40px;
   height: 40px;
-  border-radius: 50%;
   overflow: hidden;
   display: grid;
   place-items: center;
-  background: radial-gradient(circle at 50% 35%, #fff4dc, #e3c592 78%);
-  box-shadow: 0 0 0 2px var(--wood), 0 2px 4px rgba(60, 36, 16, 0.2);
+  background: #f1dcae;
+  box-shadow: 0 0 0 2px var(--wood), 0 3px 0 2px rgba(40, 20, 8, 0.25);
 }
 .face img {
   width: 100%;
@@ -2121,8 +2112,7 @@ pre.out.err-out {
   font-size: 0.82rem;
   font-weight: 600;
   padding: 4px 10px;
-  border-radius: 999px;
-  border: 1px solid var(--rule);
+  border: 2px solid var(--rule);
   color: var(--ink-2);
 }
 .friend-page section {
@@ -2171,8 +2161,8 @@ pre.out.err-out {
   display: inline-block;
   margin-left: 6px;
   padding: 1px 8px;
-  border-radius: 999px;
-  background: rgba(45, 110, 96, 0.12);
+  background: rgba(45, 110, 96, 0.14);
+  box-shadow: inset 0 -2px 0 rgba(45, 110, 96, 0.22);
   color: var(--rune-deep);
   letter-spacing: 0.06em;
   text-transform: none;
@@ -2206,8 +2196,7 @@ pre.out.err-out {
   margin-bottom: 8px;
 }
 .file-view {
-  border: 1px solid var(--rule);
-  border-radius: 8px;
+  border: 2px solid var(--rule);
   margin-bottom: 6px;
   background: var(--paper-2);
 }
