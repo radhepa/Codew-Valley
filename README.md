@@ -1,42 +1,87 @@
-# Codew Valley
+<p align="center">
+  <img src="art/logo/codew-valley-logo.png" alt="Codew Valley" width="460">
+</p>
 
-A cozy 3D village-builder that teaches Python. You found a village in an empty
-valley, gather wood and stone, and every Python challenge you solve at the rune
-stone builds the next part of a building. Pip the serpent teaches you; the
-in-game Codex explains every concept, so you never need to search the web.
+<p align="center"><b>A cozy 3D village builder that teaches you to code.</b><br>
+Version 1.0 · Python</p>
 
-Phase 0 slice: **The Sleepy Serpent** tavern, built in 12 challenges (print,
-strings, variables, maths, joining strings, f-strings, types, string methods,
-indexing and slicing, booleans, and a capstone).
+<p align="center">
+  <img src="art/screens/title.jpg" alt="The title screen over the valley" width="820">
+</p>
 
-## Run it
+You inherit an empty valley. Gather wood and stone, walk up to the glowing rune
+stone, and speak to it in Python: every challenge you solve raises the next
+part of a building, and every building brings a new villager to befriend.
+Pip the serpent teaches you along the way, and the in-game Codex explains every
+idea, so you never need to search the web.
+
+## What's in 1.0
+
+- **12 buildings, 169 challenges.** From your first `print` to classes,
+  recursion and generators: the tavern (strings and variables), the mill
+  (if/else), the dock (while loops), the market (lists), the bakery (for loops),
+  the forge (functions), the library (dictionaries), the apothecary (text,
+  tuples, sets and errors), the town hall (files and CSV), the clock tower
+  (modules and comprehensions), the guild hall (classes) and the observatory
+  (the capstone).
+- **Real Python.** CPython 3.14 runs in your browser (Pyodide in a Web Worker),
+  entirely offline. Each challenge has a story, a lesson, a quick check, a task,
+  three hints and friendly error messages.
+- **Village life.** Fishing, cooking and baking, a bag of gathered things, and
+  Wren's daily practice that keeps old topics fresh. Python questions turn up
+  at the pond and the kitchen too.
+- **Villagers to befriend.** About a hundred everyday sayings each, gifts,
+  heart levels, and heart events with their own little cutscenes.
+- **A living valley.** Day and night, weather, wind in the grass, music and
+  sound.
+
+<p align="center">
+  <img src="art/screens/workbench.jpg" alt="The workbench: a task, the code editor and Pip's feedback" width="400">
+  <img src="art/screens/fishing.jpg" alt="Fishing at the dock" width="400">
+</p>
+<p align="center">
+  <img src="art/screens/valley.jpg" alt="The valley at noon" width="808">
+</p>
+
+## Play it
+
+You need [Node.js](https://nodejs.org) 22 or newer.
 
 ```bash
 npm install
-npm run dev      # http://localhost:5190
-npm test         # checks every Codex example, quiz and challenge with real Python
-npm run build
+npm run dev      # then open http://localhost:5190
 ```
 
-Python is real CPython 3.14 (Pyodide) running in a Web Worker, fully offline.
+Walk with **WASD** (or click), gather and talk with **E**, open the Codex with
+**C**. Your game saves itself in the browser.
 
-## Layout
+```bash
+npm test         # checks every Codex example, quiz and challenge with real Python
+npm run build    # a static build in dist/
+```
 
-- `src/content/`: the Codex (`codex.ts`), the tavern challenges (`tavern.ts`), content types.
-- `src/python/`: the Pyodide worker, runner, and `helper.ts` (shared by the game and the tests; `_pg_grade` runs a challenge's checks).
-- `src/game/`: the Three.js world, model loading, procedural placeholders, particles, sound.
-- `src/ui/`: HUD, dialogue, rune stone panel, workbench (editor + checks), Codex book, error translator.
-- `public/models/*.glb` and `art/`: Blender-made models; `ART.md` is the contract they follow. Missing models fall back to placeholders.
-- `graphify-out/`: code map. Read `GRAPH_REPORT.md`, refresh with `graphify update .`.
+## How it's made
 
-## Writing a challenge
+- `src/content/`: the Codex, the twelve buildings' challenges, the villagers and their scenes.
+- `src/python/`: the Pyodide worker and the grader shared by the game and the tests.
+- `src/game/`: the Three.js world, models, weather, particles and sound.
+- `src/life/`: fishing, cooking, practice, the bag and friendship.
+- `src/ui/`: the HUD, dialogue, rune stone, workbench and Codex book. `UI.md` describes the pixel look.
+- `public/models/` and `art/`: models made in Blender (`ART.md` is their contract).
+  The logo and icons come from `art/ui/make_logo.py`.
 
-Each challenge in `src/content/tavern.ts` has a story intro, Codex pages, a
-quiz, a task, starter code, Python checks, three hints, a reference solution
-and a list of plausible mistakes. `npm test` fails unless the solution passes,
-every mistake fails, the starter fails, and the quiz answer matches what Python
-really prints. Checks can call `check(cond, msg)`, `expect_lines([...])` and
-`rerun(changed_source)` (to make sure typed-in answers don't pass).
+Every challenge is tested: `npm test` fails unless the reference solution
+passes, every listed mistake fails, the starter code fails, and each quiz answer
+matches what Python really prints.
 
-Saves live in `localStorage` under `pyvillage.save.v1`. Dev hook in the
-console: `__pv.give()`, `__pv.stage(n)`, `__pv.build(n)`.
+## Credits
+
+Music and sounds are by the artists listed in `public/audio/CREDITS.md` (CC0
+and CC BY; the CC BY pieces are also credited in the game). Fonts: Pixelify
+Sans, Figtree and JetBrains Mono (SIL Open Font License).
+
+## Coming next
+
+More languages. Python is the first tongue the valley speaks.
+
+Made by Radhe Patel.
