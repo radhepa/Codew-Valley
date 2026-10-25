@@ -48,27 +48,27 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 6px 12px 6px 8px;
-  border: 1px solid var(--plate-line);
+  padding: 5px 13px 5px 8px;
   border-radius: 999px;
-  color: var(--cream-2);
-  font: 600 0.74rem var(--font);
-  letter-spacing: 0.08em;
+  color: var(--ink-2);
+  font: 700 0.72rem var(--font);
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   cursor: pointer;
-  opacity: 0.55;
-  transition: opacity 0.2s;
+  opacity: 0.8;
+  transition: opacity 0.2s, transform 0.15s;
   user-select: none;
   --p: 0;
 }
 .scene-skip:hover {
   opacity: 1;
+  transform: translateY(-1px);
 }
 .scene-skip .ring {
   width: 16px;
   height: 16px;
   border-radius: 50%;
-  background: conic-gradient(var(--gold) calc(var(--p) * 360deg), rgba(239, 229, 205, 0.18) 0);
+  background: conic-gradient(var(--wood) calc(var(--p) * 360deg), rgba(138, 90, 50, 0.18) 0);
   -webkit-mask: radial-gradient(circle, transparent 4px, #000 5px);
   mask: radial-gradient(circle, transparent 4px, #000 5px);
 }
@@ -91,21 +91,23 @@
   content: "";
   position: absolute;
   inset: 0;
-  background: var(--paper);
-  border: 2px solid var(--ink);
+  background:
+    linear-gradient(180deg, #fffaf0, var(--paper) 50%, var(--paper-2)) padding-box,
+    var(--frame) border-box;
+  border: 3px solid transparent;
   border-radius: 46% 54% 50% 50% / 52% 48% 54% 46%;
-  box-shadow: 0 6px 14px rgba(10, 12, 18, 0.3);
+  box-shadow: inset 0 0 0 1.5px rgba(236, 201, 138, 0.6), 0 2px 0 rgba(90, 58, 31, 0.35), 0 8px 16px rgba(60, 36, 16, 0.22);
 }
 .scene-emote::after {
   content: "";
   position: absolute;
   left: 21px;
-  bottom: -9px;
+  bottom: -10px;
   width: 12px;
   height: 12px;
-  background: var(--paper);
-  border-right: 2px solid var(--ink);
-  border-bottom: 2px solid var(--ink);
+  background: var(--paper-2);
+  border-right: 3px solid var(--wood);
+  border-bottom: 3px solid var(--wood-dark);
   transform: rotate(45deg) skew(8deg, 8deg);
 }
 .scene-emote svg {
@@ -153,20 +155,31 @@
 /* ---- the Keepsakes shelf (Friends journal) ---- */
 .keepsakes ul {
   list-style: none;
-  margin: 6px 0 0;
-  padding: 10px 0 12px;
+  margin: 8px 0 0;
+  padding: 10px 2px 14px;
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  gap: 10px;
-  border-bottom: 6px solid var(--paper-3);
-  box-shadow: 0 6px 0 -3px rgba(42, 36, 29, 0.12);
+  gap: 12px;
+  position: relative;
+}
+/* the shelf itself: a wooden plank with a lip */
+.keepsakes ul::after {
+  content: "";
+  position: absolute;
+  left: -4px;
+  right: -4px;
+  bottom: 0;
+  height: 9px;
+  border-radius: 4px;
+  background: var(--frame);
+  box-shadow: inset 0 1.5px 0 rgba(236, 201, 138, 0.55), 0 3px 0 rgba(90, 58, 31, 0.3), 0 6px 10px rgba(60, 36, 16, 0.18);
 }
 .keepsakes li {
   display: flex;
-  gap: 8px;
+  gap: 9px;
   align-items: flex-start;
   font-size: 0.82rem;
-  line-height: 1.35;
+  line-height: 1.38;
   color: var(--ink-2);
 }
 .keepsakes li b {
@@ -174,23 +187,27 @@
   color: var(--ink);
   font-family: var(--display);
   font-weight: 600;
-  font-size: 0.9rem;
+  font-size: 0.92rem;
 }
 .keepsakes .keepsake-art {
   flex: none;
-  width: 42px;
-  height: 42px;
+  width: 46px;
+  height: 46px;
   color: var(--ink);
-  background: var(--paper-2);
-  border: 1px solid var(--rule);
-  border-radius: 8px;
-  padding: 3px;
+  padding: 4px;
+  background:
+    linear-gradient(180deg, #fffaf0, var(--paper-2)) padding-box,
+    var(--frame) border-box;
+  border: 2px solid transparent;
+  border-radius: var(--r-sm);
+  box-shadow: 0 2px 0 rgba(90, 58, 31, 0.3), 0 4px 8px rgba(60, 36, 16, 0.15);
 }
 .keepsakes li.empty .slot {
-  width: 42px;
-  height: 42px;
-  border: 1.5px dashed var(--rule);
-  border-radius: 8px;
+  width: 46px;
+  height: 46px;
+  border: 2px dashed rgba(138, 90, 50, 0.35);
+  border-radius: var(--r-sm);
+  background: rgba(138, 90, 50, 0.05);
 }
 
 /* toasts (a keepsake found) drop below the top bar while a scene plays */
