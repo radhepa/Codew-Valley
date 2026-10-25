@@ -29,35 +29,40 @@
   gap: 10px;
   /* a ruled seed-bed under the pots */
   padding: 10px;
-  border-radius: 12px;
-  background: repeating-linear-gradient(0deg, transparent 0 27px, rgba(138, 124, 106, 0.12) 27px 28px), var(--paper-2);
-  border: 1px solid var(--rule);
+  border-radius: 0;
+  /* hard-stop ruled lines (a deliberate pattern, not a soft gradient) */
+  background: repeating-linear-gradient(0deg, transparent 0 26px, rgba(138, 124, 106, 0.14) 26px 28px), var(--paper-2);
+  border: 2px solid var(--rule);
+  box-shadow: inset 0 3px 0 rgba(94, 46, 20, 0.1);
 }
+/* a pot's plot: a small parchment card in a pixel frame (3x nine-slice); the frame is the padding */
 .sharp-plot {
   position: relative;
   display: grid;
   justify-items: center;
   align-content: start;
   gap: 2px;
-  padding: 8px 8px 10px;
-  border: 1px solid var(--rule);
-  border-radius: 10px;
-  background: var(--paper);
+  padding: 0 0 2px;
+  border: 15px solid transparent;
+  border-image: var(--px-card) 15 fill stretch;
+  border-radius: 0;
+  background: none;
+  image-rendering: pixelated;
+  filter: drop-shadow(0 3px 0 rgba(40, 20, 8, 0.26));
   color: var(--ink);
   font: inherit;
   text-align: center;
   cursor: pointer;
-  transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
-  animation: plotIn 0.4s cubic-bezier(0.2, 0.8, 0.3, 1.15) both;
+  transition: transform 0.08s steps(2);
+  animation: plotIn 0.24s steps(3) both;
   animation-delay: calc(var(--i, 0) * 35ms);
 }
 .sharp-plot:hover {
-  transform: translateY(-2px);
-  border-color: var(--ink-3);
-  box-shadow: 0 6px 16px rgba(42, 36, 29, 0.12);
+  transform: translateY(-3px);
+  filter: drop-shadow(0 6px 0 rgba(40, 20, 8, 0.22));
 }
 .sharp-plot:hover .plant {
-  transform: rotate(-2deg);
+  transform: rotate(-3deg);
 }
 @keyframes plotIn {
   from {
@@ -68,7 +73,7 @@
 .sharp-plot .plant {
   width: 92px;
   height: 103px;
-  transition: transform 0.4s cubic-bezier(0.3, 1.6, 0.5, 1);
+  transition: transform 0.2s steps(2);
   transform-origin: 50% 90%;
 }
 .sharp-plot .name {
@@ -98,7 +103,7 @@
 .sharp-plot .state .dot {
   width: 8px;
   height: 8px;
-  border-radius: 50%;
+  border-radius: 0;
   background: var(--moss);
 }
 .sharp-plot.fine .state .dot {
@@ -124,7 +129,7 @@
 .sharp-plot .roots i {
   width: 9px;
   height: 5px;
-  border-radius: 9px 0;
+  border-radius: 0;
   border: 1px solid var(--ink-3);
   opacity: 0.55;
 }
@@ -139,13 +144,16 @@
 }
 .sharp-plot.unplanted {
   cursor: default;
+  padding: 12px 12px 14px;
+  border: 3px dashed var(--rule);
+  border-image: none;
   background: transparent;
-  border-style: dashed;
+  filter: none;
   color: var(--ink-3);
 }
 .sharp-plot.unplanted:hover {
   transform: none;
-  box-shadow: none;
+  filter: none;
   border-color: var(--rule);
 }
 .sharp-plot.unplanted .state {
@@ -175,9 +183,9 @@
   gap: 6px;
 }
 .sharp-chip {
-  padding: 4px 10px;
-  border-radius: 999px;
-  border: 1px solid var(--gold);
+  padding: 3px 9px;
+  border-radius: 0;
+  border: 2px solid var(--gold);
   background: rgba(214, 177, 106, 0.16);
   color: var(--gold-deep);
   font-size: 0.8rem;
@@ -194,13 +202,13 @@
   max-width: calc(100vw - 36px);
   padding: 14px 18px 14px;
   cursor: pointer;
-  animation: basketIn 0.45s cubic-bezier(0.2, 0.9, 0.3, 1.25);
-  transition: opacity 0.4s, transform 0.4s;
+  animation: basketIn 0.32s steps(4);
+  transition: opacity 0.36s steps(3), transform 0.36s steps(3);
   z-index: 30;
 }
 .basket-card.away {
   opacity: 0;
-  transform: translate(-50%, -14px) scale(0.96);
+  transform: translate(-50%, -14px);
 }
 @keyframes basketIn {
   from {
@@ -225,7 +233,7 @@
   width: 34px;
   height: 34px;
   color: var(--gold);
-  animation: basketHop 0.9s ease-out 0.2s;
+  animation: basketHop 0.8s steps(8) 0.2s;
   transform-origin: 50% 90%;
 }
 @keyframes basketHop {
@@ -251,10 +259,11 @@
   height: 48px;
   display: grid;
   place-items: center;
-  border-radius: 10px;
-  background: rgba(241, 233, 214, 0.08);
-  border: 1px solid var(--plate-line);
-  animation: cropPop 0.5s cubic-bezier(0.2, 0.9, 0.3, 1.5) both;
+  border-radius: 0;
+  background: var(--paper-2);
+  border: 2px solid var(--rule);
+  box-shadow: 0 3px 0 rgba(94, 46, 20, 0.2);
+  animation: cropPop 0.3s steps(3) both;
 }
 .basket-slot .item-ico {
   width: 30px;
@@ -269,8 +278,9 @@
   color: var(--cream-2);
 }
 .basket-slot.rare {
-  border-color: rgba(214, 177, 106, 0.7);
-  box-shadow: 0 0 0 3px rgba(214, 177, 106, 0.14), 0 0 14px rgba(214, 177, 106, 0.3);
+  border-color: var(--gold-deep);
+  background: #fbefc9;
+  box-shadow: 0 0 0 2px #e8b84a, 0 3px 0 2px rgba(94, 46, 20, 0.2);
 }
 @keyframes cropPop {
   from {

@@ -9,12 +9,18 @@
   padding: 10px 18px 11px;
   text-align: center;
   max-width: min(640px, calc(100vw - 36px));
-  animation: fishUp 0.3s cubic-bezier(0.2, 0.9, 0.3, 1.1);
+  animation: fishUp 0.24s steps(3);
 }
 .fish-hud[hidden],
 .fish-reel[hidden],
 .fish-bang[hidden] {
   display: none;
+}
+/* the note and the reel sit at the bottom centre, where the (big, pixel) corner buttons
+   would cover them: the buttons step aside while fishing, as they do for dialogue */
+#ui:has(.fish-hud:not([hidden])) .hud-buttons,
+#ui:has(.fish-reel:not([hidden])) .hud-buttons {
+  visibility: hidden;
 }
 .fish-status {
   font-family: var(--display);
@@ -30,6 +36,13 @@
   color: var(--cream-2);
 }
 .fish-keys:empty {
+  display: none;
+}
+/* today's rune ripple (ripple.ts): a teal button under the note while it waits */
+.fish-ripple {
+  margin-top: 8px;
+}
+.fish-ripple[hidden] {
   display: none;
 }
 .fish-forecast:not(:empty) {
@@ -64,18 +77,18 @@
   margin: -46px 0 0 -23px;
   display: grid;
   place-items: center;
-  border-radius: 50%;
-  background: var(--paper) var(--grain);
+  border-radius: 0;
+  background: var(--paper);
   color: var(--ember);
-  border: 2px solid var(--ink);
+  border: 3px solid var(--ink);
   font-family: var(--display);
   font-weight: 800;
   font-size: 1.7rem;
-  box-shadow: 0 6px 16px rgba(10, 12, 18, 0.3);
+  box-shadow: inset 0 -3px 0 var(--paper-3), 0 5px 0 rgba(40, 20, 8, 0.4);
   pointer-events: none;
 }
 .fish-bang.pop {
-  animation: bangPop 0.45s cubic-bezier(0.2, 1.6, 0.4, 1) both, bangWobble 0.5s 0.45s ease-in-out infinite alternate;
+  animation: bangPop 0.3s steps(3) both, bangWobble 0.5s steps(2) 0.3s infinite alternate;
 }
 @keyframes bangPop {
   from {
@@ -98,7 +111,7 @@
   transform: translateX(-50%);
   width: min(420px, calc(100vw - 36px));
   padding: 12px 18px 12px;
-  animation: fishUp 0.25s cubic-bezier(0.2, 0.9, 0.3, 1.1);
+  animation: fishUp 0.24s steps(3);
 }
 .fish-reel-top {
   display: flex;
@@ -120,19 +133,20 @@
   color: var(--gold);
 }
 .fish-reel.pull .fish-reel-mode {
-  color: #ef8a6c;
+  color: var(--ember);
 }
 .fish-track {
   position: relative;
   height: 34px;
   margin: 10px 4px 8px;
 }
+/* the water: a flat pixel strip in a dark wooden rim, a hard shade along its top */
 .fish-track-water {
   position: absolute;
   inset: 11px 0;
-  border-radius: 999px;
-  background: linear-gradient(90deg, rgba(95, 199, 173, 0.35), rgba(76, 140, 163, 0.5));
-  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.3);
+  border-radius: 0;
+  background: #7fbcb4;
+  box-shadow: 0 0 0 3px var(--wood-dark), inset 0 3px 0 #5d9a9c, inset 0 -3px 0 #a3d3c6;
 }
 .fish-you {
   position: absolute;
@@ -140,9 +154,9 @@
   top: 7px;
   width: 20px;
   height: 20px;
-  border-radius: 50%;
+  border-radius: 0;
   background: var(--cream);
-  box-shadow: 0 0 0 3px rgba(241, 233, 214, 0.25);
+  box-shadow: 0 0 0 3px var(--bronze-light), 0 3px 0 3px rgba(40, 20, 8, 0.3);
 }
 .fish-marker {
   position: absolute;
@@ -155,10 +169,10 @@
     url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 44 30'><path d='M4 15c6-8 19-10 27-4l9-6v20l-9-6c-8 6-21 4-27-4z' fill='%231e2129' stroke='%23f1e9d6' stroke-width='2' stroke-linejoin='round'/><circle cx='11' cy='13.5' r='1.8' fill='%23f1e9d6'/></svg>");
 }
 .fish-reel.pull .fish-marker {
-  animation: fishThrash 0.18s ease-in-out infinite alternate;
+  animation: fishThrash 0.18s steps(2) infinite alternate;
 }
 .fish-reel.warn .fish-marker {
-  animation: fishThrash 0.3s ease-in-out infinite alternate;
+  animation: fishThrash 0.3s steps(2) infinite alternate;
 }
 @keyframes fishThrash {
   from {
@@ -168,27 +182,36 @@
     transform: translateY(2px) rotate(9deg);
   }
 }
+/* the line's tension: a sunk square track; the bar turns teal, gold, then ember in hard bands */
 .fish-tension {
-  height: 7px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.09);
+  height: 8px;
+  border-radius: 0;
+  background: rgba(94, 46, 20, 0.2);
+  box-shadow: inset 0 2px 0 rgba(40, 20, 8, 0.18);
   overflow: hidden;
 }
 .fish-tension span {
   display: block;
   height: 100%;
   width: 0;
-  border-radius: inherit;
-  background: linear-gradient(90deg, var(--rune), var(--gold) 60%, var(--ember));
+  border-radius: 0;
+  background: linear-gradient(90deg, var(--rune) 0 32%, var(--gold) 32% 66%, var(--ember) 66%);
   background-size: 420px 100%;
   transition: width 0.08s linear;
 }
 .fish-reel.strain .fish-tension span {
-  animation: strain 0.2s ease-in-out infinite alternate;
+  animation: strain 0.2s steps(2) infinite alternate;
 }
 @keyframes strain {
   to {
     filter: brightness(1.35);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fish-bang.pop,
+  .fish-reel.pull .fish-marker,
+  .fish-reel.warn .fish-marker {
+    animation: none;
   }
 }
 .fish-reel-hint {
@@ -209,18 +232,18 @@
   align-items: center;
   gap: 16px;
   padding: 14px 20px 14px 12px;
-  animation: cardIn 0.45s cubic-bezier(0.2, 1.3, 0.35, 1) both;
+  animation: cardIn 0.32s steps(4) both;
   pointer-events: none;
 }
 .fish-card.out {
-  animation: cardOut 0.3s ease-in both;
+  animation: cardOut 0.3s steps(3) both;
 }
 .fish-card img {
   width: 168px;
   height: 109px;
   object-fit: contain;
   flex: none;
-  filter: drop-shadow(0 4px 6px rgba(60, 40, 20, 0.22));
+  filter: drop-shadow(0 4px 0 rgba(60, 40, 20, 0.2));
 }
 .fish-card h3 {
   margin: 2px 0 6px;
@@ -238,8 +261,10 @@
 .fish-card em {
   color: var(--ink);
 }
+/* a rare catch: a hard gold pixel outline that follows the frame, then the usual drop */
 .fish-card.rare {
-  box-shadow: var(--lift), 0 0 0 2px var(--gold), 0 0 28px rgba(214, 177, 106, 0.55);
+  filter: drop-shadow(3px 0 0 #e8b84a) drop-shadow(-3px 0 0 #e8b84a) drop-shadow(0 3px 0 #e8b84a) drop-shadow(0 -3px 0 #e8b84a)
+    drop-shadow(0 10px 0 rgba(30, 15, 5, 0.45));
 }
 .fish-card-tags {
   display: flex;
@@ -249,9 +274,9 @@
 .fish-card .tag {
   font-size: 0.72rem;
   font-weight: 750;
-  padding: 2px 8px;
-  border-radius: 999px;
-  border: 1px solid var(--rule);
+  padding: 1px 7px;
+  border-radius: 0;
+  border: 2px solid var(--rule);
   color: var(--ink-2);
 }
 .fish-card .tag.new {
@@ -299,22 +324,25 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 8px 8px 9px;
-  border: 1px solid var(--rule);
-  border-radius: 10px;
-  background: var(--paper-2);
+  /* a small parchment card in a pixel frame (3x nine-slice); the frame is the padding */
+  padding: 0;
+  border: 15px solid transparent;
+  border-image: var(--px-card) 15 fill stretch;
+  border-radius: 0;
+  background: none;
+  image-rendering: pixelated;
+  filter: drop-shadow(0 3px 0 rgba(40, 20, 8, 0.28));
   color: var(--ink);
   cursor: pointer;
   font: inherit;
-  transition: transform 0.12s, border-color 0.12s, box-shadow 0.12s;
+  transition: transform 0.08s steps(2);
 }
 .fj-card:hover {
-  transform: translateY(-1px);
-  border-color: var(--ink-3);
+  transform: translateY(-3px);
+  filter: drop-shadow(0 6px 0 rgba(40, 20, 8, 0.24));
 }
 .fj-card.on {
-  border-color: var(--rune-deep);
-  box-shadow: 0 0 0 3px rgba(45, 110, 96, 0.15);
+  border-image-source: url("../../ui/px/f_card_on_3x.png");
 }
 .fj-pic {
   width: 100%;
@@ -336,8 +364,13 @@
 .fj-plate.unknown img {
   filter: brightness(0) opacity(0.62);
 }
+/* the frame without its fill, over a darker page */
 .fj-card.unknown {
-  background: var(--paper-3);
+  border-image: var(--px-card) 15 stretch;
+  background: var(--paper-3) padding-box;
+}
+.fj-card.unknown.on {
+  border-image-source: url("../../ui/px/f_card_on_3x.png");
 }
 .fj-name {
   font-family: var(--display);
@@ -356,13 +389,13 @@
 }
 .fj-dot {
   position: absolute;
-  top: 8px;
-  right: 8px;
+  top: -6px;
+  right: -6px;
   width: 9px;
   height: 9px;
-  border-radius: 50%;
+  border-radius: 0;
   background: var(--rune);
-  box-shadow: 0 0 0 3px rgba(95, 199, 173, 0.25);
+  box-shadow: 0 0 0 2px #1d4a40;
 }
 .fj-info {
   border-left: 1px solid var(--rule);
@@ -372,11 +405,13 @@
   height: 150px;
   display: grid;
   place-items: center;
-  border-radius: 10px;
-  background: radial-gradient(ellipse at 50% 60%, rgba(95, 140, 150, 0.16), transparent 70%);
+  border-radius: 0;
+  background: rgba(95, 140, 150, 0.12);
+  box-shadow: inset 0 0 0 2px rgba(95, 140, 150, 0.22), inset 0 -6px 0 rgba(95, 140, 150, 0.1);
 }
 .fj-plate.unknown {
-  background: radial-gradient(ellipse at 50% 60%, rgba(42, 36, 29, 0.08), transparent 70%);
+  background: rgba(42, 36, 29, 0.06);
+  box-shadow: inset 0 0 0 2px rgba(42, 36, 29, 0.12);
 }
 .fj-info p {
   line-height: 1.55;
@@ -408,10 +443,11 @@
   letter-spacing: 0.12em;
   text-transform: uppercase;
   vertical-align: middle;
-  padding: 2px 7px;
-  border-radius: 999px;
+  padding: 2px 6px;
+  border-radius: 0;
   background: var(--gold);
   color: var(--ink);
+  box-shadow: 0 0 0 2px var(--gold-deep);
 }
 .fj-facts {
   display: flex;
@@ -433,9 +469,9 @@
   align-items: center;
   gap: 5px;
   font-size: 0.8rem;
-  padding: 3px 9px 3px 6px;
-  border-radius: 999px;
-  border: 1px solid var(--rule);
+  padding: 2px 8px 2px 5px;
+  border-radius: 0;
+  border: 2px solid var(--rule);
   background: var(--paper-2);
 }
 .fj-chip .ico {

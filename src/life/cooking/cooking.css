@@ -9,22 +9,22 @@
   display: flex;
   gap: 6px;
   padding: 12px 26px 0;
-  border-bottom: 1px solid var(--rule);
+  border-bottom: 2px solid var(--rule);
 }
 .cook-tab {
   display: flex;
   align-items: center;
   gap: 7px;
-  padding: 8px 14px 9px;
-  border: 1px solid transparent;
+  padding: 7px 13px 9px;
+  border: 2px solid transparent;
   border-bottom: 0;
-  border-radius: 9px 9px 0 0;
+  border-radius: 0;
   background: none;
   font: inherit;
   font-weight: 700;
   color: var(--ink-3);
   cursor: pointer;
-  margin-bottom: -1px;
+  margin-bottom: -2px;
 }
 .cook-tab .ico {
   width: 18px;
@@ -35,14 +35,22 @@
   font-weight: 800;
   font-variant-numeric: tabular-nums;
   color: var(--ink-3);
-  background: var(--paper-2);
-  border-radius: 99px;
-  padding: 1px 7px;
+  background: var(--paper-3);
+  border-radius: 0;
+  padding: 1px 6px;
+  box-shadow: inset 0 -2px 0 rgba(94, 46, 20, 0.16);
 }
 .cook-tab.on {
   color: var(--ink);
   background: var(--paper);
   border-color: var(--rule);
+  /* a wooden strip along the top of the open tab */
+  box-shadow: inset 0 3px 0 var(--wood);
+}
+.cook-tab.on .cnt {
+  color: var(--sel-ink);
+  background: var(--sel);
+  box-shadow: none;
 }
 .cook-body {
   display: grid;
@@ -64,32 +72,36 @@
   flex-direction: column;
   align-items: center;
   gap: 3px;
-  padding: 12px 8px 10px;
-  border: 1px solid var(--rule);
-  border-radius: 12px;
-  background: var(--paper-2);
+  /* a small parchment card in a pixel frame (3x nine-slice); the frame is the padding */
+  padding: 0;
+  border: 15px solid transparent;
+  border-image: var(--px-card) 15 fill stretch;
+  border-radius: 0;
+  background: none;
+  image-rendering: pixelated;
+  filter: drop-shadow(0 3px 0 rgba(40, 20, 8, 0.28));
   font: inherit;
   color: var(--ink);
   cursor: pointer;
   text-align: center;
-  transition: transform 0.12s, border-color 0.12s, box-shadow 0.12s;
+  transition: transform 0.08s steps(2);
 }
 .rc:hover {
-  transform: translateY(-2px);
-  border-color: var(--ink-3);
+  transform: translateY(-3px);
+  filter: drop-shadow(0 6px 0 rgba(40, 20, 8, 0.24));
 }
 .rc.on {
-  border-color: var(--rune-deep);
-  box-shadow: 0 0 0 3px rgba(45, 110, 96, 0.15);
+  border-image-source: url("../../ui/px/f_card_on_3x.png");
 }
+/* a dish on its plate: round, flat colours, a hard rim and ledge */
 .rc .plate-dot {
   display: grid;
   place-items: center;
   width: 58px;
   height: 58px;
   border-radius: 50%;
-  background: radial-gradient(circle at 50% 42%, #fbf7ee 0 52%, #e9dfca 53% 62%, #f6f0e3 63%);
-  box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.05), 0 2px 4px rgba(60, 40, 20, 0.12);
+  background: #fbf7ee;
+  box-shadow: inset 0 0 0 5px #f1e7d2, inset 0 0 0 7px #e2d3b6, 0 0 0 2px #b98d5a, 0 3px 0 2px rgba(94, 46, 20, 0.22);
   margin-bottom: 4px;
 }
 .rc .plate-dot .item-ico {
@@ -110,28 +122,40 @@
   color: var(--rune-deep);
   font-weight: 700;
 }
+/* not found yet: the frame without its fill, over a hard-stop hatch */
 .rc.unknown {
-  background: repeating-linear-gradient(-45deg, var(--paper-2) 0 8px, var(--paper-3) 8px 9px);
+  border-image: var(--px-card) 15 stretch;
+  background: repeating-linear-gradient(-45deg, var(--paper-2) 0 8px, var(--paper-3) 8px 10px) padding-box;
+}
+.rc.unknown.on {
+  border-image-source: url("../../ui/px/f_card_on_3x.png");
 }
 .rc.unknown .nm {
   color: var(--ink-3);
   letter-spacing: 0.15em;
 }
 .rc.unknown .plate-dot {
-  background: radial-gradient(circle at 50% 42%, #ece3d1 0 52%, #ddd0b6 53% 62%, #e6dcc7 63%);
+  background: #ece3d1;
+  box-shadow: inset 0 0 0 5px #e6dcc7, inset 0 0 0 7px #d6c6a6, 0 0 0 2px #b98d5a, 0 3px 0 2px rgba(94, 46, 20, 0.16);
 }
 .item-ico.shadow {
   color: #5a4f43 !important;
   fill: #5a4f43;
   fill-opacity: 0.85;
   opacity: 0.5;
-  filter: blur(0.3px);
 }
 .rc.try {
-  border-style: dashed;
+  border: 3px dashed var(--rule);
+  border-image: none;
+  padding: 12px;
   background: none;
+  filter: none;
   justify-content: center;
   min-height: 132px;
+}
+.rc.try:hover {
+  border-color: var(--ink-3);
+  filter: none;
 }
 .rc.try .ico.big {
   width: 34px;
@@ -139,23 +163,25 @@
   color: var(--gold-deep);
   margin: 12px 0 6px;
 }
+/* NEW: a square teal chip pinned on the frame's corner */
 .rc .new {
   position: absolute;
-  top: 7px;
-  left: 7px;
+  top: -9px;
+  left: -9px;
   font-size: 0.62rem;
   font-weight: 800;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: #fff;
+  color: #effaf6;
   background: var(--rune-deep);
-  border-radius: 99px;
-  padding: 1px 6px;
+  border-radius: 0;
+  padding: 1px 5px;
+  box-shadow: 0 0 0 2px #1d4a40, 0 3px 0 2px rgba(40, 20, 8, 0.3);
 }
 .rc .asked {
   position: absolute;
-  top: 6px;
-  right: 6px;
+  top: -9px;
+  right: -9px;
 }
 .rc .asked .ico {
   width: 15px;
@@ -213,8 +239,9 @@
   align-items: center;
   gap: 8px;
   padding: 5px 9px;
-  border-radius: 8px;
+  border-radius: 0;
   background: var(--paper-2);
+  box-shadow: inset 0 -2px 0 rgba(94, 46, 20, 0.14);
   font-size: 0.9rem;
 }
 .needs li .ico {
@@ -231,7 +258,9 @@
 }
 .needs li.pantry {
   background: none;
-  border: 1px dashed var(--rule);
+  box-shadow: none;
+  padding: 3px 7px;
+  border: 2px dashed var(--rule);
   color: var(--ink-3);
   font-size: 0.82rem;
 }
@@ -259,8 +288,8 @@
 }
 .seg {
   display: inline-flex;
-  border: 1px solid var(--rule);
-  border-radius: 9px;
+  border: 2px solid var(--rule);
+  border-radius: 0;
   overflow: hidden;
   margin: 2px 0 12px;
 }
@@ -281,8 +310,8 @@
   height: 17px;
 }
 .seg-b.on {
-  background: var(--paper-3);
-  color: var(--ink);
+  background: var(--sel);
+  color: var(--sel-ink);
 }
 .mix {
   display: flex;
@@ -292,8 +321,8 @@
 .mix-slot {
   width: 58px;
   height: 58px;
-  border-radius: 50%;
-  border: 2px dashed var(--rule);
+  border-radius: 0;
+  border: 3px dashed var(--rule);
   background: var(--paper-2);
   display: grid;
   place-items: center;
@@ -303,7 +332,8 @@
   border-style: solid;
   border-color: var(--gold-deep);
   background: #fbf6ea;
-  animation: mixIn 0.25s cubic-bezier(0.2, 1.4, 0.4, 1);
+  box-shadow: 0 3px 0 rgba(94, 46, 20, 0.25);
+  animation: mixIn 0.2s steps(3);
 }
 .mix-slot .item-ico {
   width: 32px;
@@ -339,13 +369,13 @@
   transform: translateX(-50%);
   width: min(560px, calc(100vw - 32px));
   padding: 14px 18px 14px;
-  border-radius: 14px;
+  border-radius: 0;
   color: var(--cream);
-  animation: cpIn 0.35s cubic-bezier(0.2, 0.9, 0.3, 1);
+  animation: cpIn 0.3s steps(4);
   z-index: 5;
 }
 .cook-panel.out {
-  animation: cpOut 0.3s ease forwards;
+  animation: cpOut 0.3s steps(3) forwards;
 }
 @keyframes cpIn {
   from {
@@ -370,8 +400,8 @@
   width: 44px;
   height: 44px;
   border-radius: 50%;
-  background: rgba(241, 233, 214, 0.1);
-  border: 1px solid var(--plate-line);
+  background: #fbf7ee;
+  box-shadow: inset 0 0 0 4px #ece0c6, 0 0 0 2px #b98d5a, 0 3px 0 2px rgba(94, 46, 20, 0.2);
 }
 .cp-dish .item-ico {
   width: 28px;
@@ -400,20 +430,22 @@
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
+/* the steps: square chips; the current one is a flat wooden plaque */
 .cp-steps li {
-  padding: 3px 8px;
-  border-radius: 99px;
+  padding: 2px 7px;
+  border-radius: 0;
   color: var(--cream-3);
-  border: 1px solid var(--plate-line);
+  border: 2px solid var(--rule);
 }
 .cp-steps li.on {
-  color: var(--plate-solid);
-  background: var(--gold);
-  border-color: var(--gold);
+  color: var(--sel-ink);
+  background: var(--sel);
+  border-color: var(--wood-dark);
+  box-shadow: 0 2px 0 rgba(40, 20, 8, 0.3);
 }
 .cp-steps li.done {
   color: var(--rune);
-  border-color: rgba(95, 199, 173, 0.4);
+  border-color: var(--rune);
 }
 .cp-say {
   margin: 10px 2px 8px;
@@ -421,7 +453,7 @@
   color: var(--cream-2);
 }
 .cp-say.in {
-  animation: sayIn 0.3s ease;
+  animation: sayIn 0.24s steps(3);
 }
 @keyframes sayIn {
   from {
@@ -432,48 +464,59 @@
 .cp-gauge {
   position: relative;
   height: 18px;
-  margin: 4px 2px 22px;
-  border-radius: 99px;
-  background: linear-gradient(90deg, #3c4a5a, #6b5a3e 45%, #a35c33 85%, #7a2f22);
-  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.45);
+  margin: 4px 2px 26px;
+  border-radius: 0;
+  /* the heat, cold to scorched, in hard pixel bands */
+  background: linear-gradient(
+    90deg,
+    #3c4a5a 0 17%,
+    #50524f 17% 34%,
+    #6b5a3e 34% 52%,
+    #8a5b37 52% 70%,
+    #a35c33 70% 87%,
+    #7a2f22 87%
+  );
+  box-shadow: 0 0 0 3px var(--wood-dark), inset 0 3px 0 rgba(0, 0, 0, 0.3);
 }
 .cp-gauge .band {
   position: absolute;
   top: -3px;
   bottom: -3px;
-  border-radius: 6px;
-  border: 2px solid var(--gold);
-  background: rgba(214, 177, 106, 0.22);
-  transition: box-shadow 0.2s;
+  border-radius: 0;
+  border: 3px solid #e8c374;
+  background: rgba(232, 195, 116, 0.22);
 }
 .cp-gauge.sweet .band {
-  box-shadow: 0 0 14px rgba(255, 210, 120, 0.75);
+  border-color: #fff0b8;
+  background: rgba(255, 226, 140, 0.4);
+  box-shadow: 0 0 0 2px #b8862c;
 }
 .cp-gauge .fill {
   position: absolute;
   left: 0;
-  bottom: -7px;
+  bottom: -8px;
   height: 3px;
-  border-radius: 3px;
+  border-radius: 0;
   background: var(--rune);
   width: 0;
 }
+/* the needle: a square cream peg with an ink outline and a hard ledge */
 .cp-gauge .mark {
   position: absolute;
   top: 50%;
-  width: 22px;
-  height: 22px;
-  margin: -11px 0 0 -11px;
-  border-radius: 50%;
-  background: radial-gradient(circle at 35% 30%, #fff, #f3e3c0 45%, #c9a35f);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+  width: 12px;
+  height: 26px;
+  margin: -13px 0 0 -6px;
+  border-radius: 0;
+  background: #fff4d8;
+  box-shadow: 0 0 0 3px var(--ink), 0 4px 0 3px rgba(0, 0, 0, 0.35);
   transition: left 0.05s linear;
 }
 .cp-gauge .ends {
   position: absolute;
   left: 0;
   right: 0;
-  top: 24px;
+  top: 29px;
   display: flex;
   justify-content: space-between;
   font-size: 0.68rem;
@@ -497,38 +540,43 @@
   place-items: center;
   width: 36px;
   height: 36px;
-  border-radius: 50%;
-  background: rgba(241, 233, 214, 0.08);
-  border: 1px solid var(--plate-line);
-  transition: transform 0.2s, opacity 0.2s;
+  border-radius: 0;
+  background: var(--paper-2);
+  border: 2px solid var(--rule);
+  transition: transform 0.12s steps(2), opacity 0.12s steps(2);
 }
 .cp-chips .chip .item-ico {
   width: 22px;
   height: 22px;
 }
 .cp-chips .chip.on {
-  border-color: var(--gold);
-  transform: scale(1.12);
-  background: rgba(214, 177, 106, 0.18);
+  border-color: var(--wood);
+  transform: translateY(-3px);
+  background: #fbf6ea;
+  box-shadow: 0 3px 0 rgba(94, 46, 20, 0.3);
 }
 .cp-chips .chip.done {
   opacity: 0.35;
-  transform: scale(0.85);
+  transform: translateY(2px);
 }
+/* the big press: a gold pixel plaque like .btn.gold */
 .cp-press {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 10px 18px;
-  border-radius: 12px;
-  border: 0;
-  background: var(--gold);
-  color: var(--plate-solid);
+  min-height: 52px;
+  padding: 0 6px;
+  border-radius: 0;
+  border: 15px solid transparent;
+  border-image: var(--px-gold) 15 fill stretch;
+  image-rendering: pixelated;
+  background: none;
+  color: var(--ink);
   font: inherit;
   font-weight: 800;
   font-size: 1rem;
   cursor: pointer;
-  box-shadow: 0 3px 0 var(--gold-deep);
+  filter: drop-shadow(0 4px 0 rgba(40, 20, 8, 0.4));
   touch-action: none;
   user-select: none;
 }
@@ -536,32 +584,40 @@
   display: none;
 }
 .cp-press:active {
-  transform: translateY(2px);
-  box-shadow: 0 1px 0 var(--gold-deep);
+  transform: translateY(3px);
+  filter: drop-shadow(0 1px 0 rgba(40, 20, 8, 0.4));
 }
 .cp-press kbd {
   font: inherit;
   font-size: 0.7rem;
   font-weight: 800;
-  padding: 2px 7px;
-  border-radius: 5px;
-  background: rgba(30, 33, 41, 0.18);
+  padding: 2px 6px;
+  border-radius: 0;
+  color: #fff1d6;
+  background: var(--ink);
+  box-shadow: 0 2px 0 rgba(40, 20, 8, 0.35);
 }
 .cp-press.pop {
-  animation: press 0.18s ease;
+  animation: cpPress 0.16s steps(2);
 }
 .cp-press.nudge {
-  animation: nudge 1.2s ease-in-out infinite;
+  animation: cpNudge 1s steps(2) infinite;
 }
-@keyframes press {
+@keyframes cpPress {
   50% {
-    transform: scale(0.94);
+    transform: translateY(3px);
   }
 }
-@keyframes nudge {
+@keyframes cpNudge {
   50% {
-    transform: scale(1.06);
-    box-shadow: 0 3px 0 var(--gold-deep), 0 0 18px rgba(255, 210, 120, 0.6);
+    transform: translateY(-3px);
+    filter: drop-shadow(0 7px 0 rgba(40, 20, 8, 0.35)) brightness(1.08);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cp-press.nudge,
+  .cp-press.pop {
+    animation: none;
   }
 }
 
@@ -572,17 +628,20 @@
   top: 16%;
   transform: translateX(-50%);
   padding: 14px 30px 14px;
-  border-radius: 14px;
+  border-radius: 0;
   text-align: center;
   color: var(--cream);
-  animation: ccIn 0.45s cubic-bezier(0.2, 1.4, 0.4, 1);
+  animation: ccIn 0.32s steps(4);
 }
 .cook-card .eyebrow {
   color: var(--gold);
 }
 .cook-card.perfect .eyebrow {
-  color: #b0761f;
-  text-shadow: 0 0 10px rgba(255, 210, 120, 0.7);
+  display: inline-block;
+  padding: 1px 6px;
+  color: var(--ink);
+  background: #f3c75e;
+  box-shadow: 0 0 0 2px #a26c24, 0 3px 0 2px rgba(40, 20, 8, 0.25);
 }
 .cc-name {
   font-family: var(--display);
@@ -595,7 +654,7 @@
   font-size: 0.9rem;
 }
 .cook-card.out {
-  animation: ccOut 0.4s ease forwards;
+  animation: ccOut 0.3s steps(3) forwards;
 }
 @keyframes ccIn {
   from {
@@ -619,17 +678,17 @@
   gap: 12px;
   align-items: center;
   max-width: 330px;
+  /* the frame comes from .plate (a 1px border here used to squash it) */
   padding: 12px 16px 12px 12px;
-  border-radius: 14px;
-  border: 1px solid rgba(214, 177, 106, 0.45);
+  border-radius: 0;
   color: var(--cream);
   text-align: left;
   font: inherit;
   cursor: pointer;
-  animation: clIn 0.5s cubic-bezier(0.2, 1.2, 0.4, 1);
+  animation: clIn 0.32s steps(4);
 }
 .cook-learn.out {
-  animation: clOut 0.5s ease forwards;
+  animation: clOut 0.36s steps(3) forwards;
 }
 .cl-dish {
   flex: none;
@@ -638,7 +697,8 @@
   width: 54px;
   height: 54px;
   border-radius: 50%;
-  background: radial-gradient(circle at 50% 42%, #fbf7ee 0 52%, #e9dfca 53% 62%, #f6f0e3 63%);
+  background: #fbf7ee;
+  box-shadow: inset 0 0 0 5px #f1e7d2, inset 0 0 0 7px #e2d3b6, 0 0 0 2px #b98d5a, 0 3px 0 2px rgba(94, 46, 20, 0.22);
 }
 .cl-dish .item-ico {
   width: 34px;
@@ -686,9 +746,9 @@
   align-items: center;
   gap: 12px;
   padding: 8px 16px;
-  border-radius: 99px;
+  border-radius: 0;
   color: var(--cream);
-  animation: cbIn 0.4s cubic-bezier(0.2, 1.3, 0.4, 1);
+  animation: cbIn 0.3s steps(4);
 }
 .cook-basket .lbl {
   font-size: 0.72rem;
@@ -710,7 +770,7 @@
   font-variant-numeric: tabular-nums;
 }
 .cook-basket.out {
-  animation: cbOut 0.5s ease forwards;
+  animation: cbOut 0.36s steps(3) forwards;
 }
 @keyframes cbIn {
   from {
@@ -767,14 +827,16 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 6px 12px 6px 8px;
-  border: 1px solid var(--rune-deep);
-  border-radius: 10px;
-  background: rgba(95, 199, 173, 0.08);
+  padding: 5px 11px 5px 7px;
+  border: 2px solid var(--rune-deep);
+  border-radius: 0;
+  background: #e9dcae;
+  box-shadow: 0 3px 0 rgba(29, 74, 64, 0.35);
   font: inherit;
   color: var(--ink);
   cursor: pointer;
   text-align: left;
+  transition: transform 0.08s steps(2);
 }
 .rune-chip .ico {
   width: 20px;
@@ -792,7 +854,31 @@
 .rune-chip.solved {
   border-color: var(--rule);
   background: none;
+  box-shadow: 0 3px 0 rgba(94, 46, 20, 0.18);
+}
+/* today's kitchen card (card.ts): gold, first along the bottom */
+.rune-chip.kitchen-card {
+  border-color: var(--gold-deep);
+  background: #f6d98a;
+  box-shadow: 0 3px 0 rgba(122, 78, 18, 0.4);
+}
+.rune-chip.kitchen-card .ico {
+  color: #8a5a12;
+}
+.rune-chip.kitchen-card.solved {
+  border-color: var(--rule);
+  background: none;
+  cursor: default;
+  transform: none;
+}
+.cook-runes .kitchen-card + .lbl {
+  margin-left: 10px;
 }
 .rune-chip:hover {
-  box-shadow: 0 0 0 3px rgba(45, 110, 96, 0.15);
+  transform: translateY(-2px);
+  box-shadow: 0 5px 0 rgba(29, 74, 64, 0.3);
+}
+.rune-chip:active {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 rgba(29, 74, 64, 0.35);
 }

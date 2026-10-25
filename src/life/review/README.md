@@ -41,6 +41,17 @@ if (q) openQuestion(ctx.app, q, (result) => {               // the workbench, in
 - `recordAnswer(q, result)` feeds the memory yourself if you show a question some other way.
 - `questionById(template, seed)` rebuilds a saved question.
 
+### Who uses it
+
+- Wren's daily question (`index.ts`): a basket of crops.
+- The rune ripple (`../fishing/ripple.ts`): once a day while fishing, a ripple glimmers (Q);
+  solving it makes the next fish you land a rare, big one. Leans on `dock`.
+- The kitchen card (`../cooking/card.ts`): once a day at Bram's hearth or Hazel's oven, a
+  chip in the recipe book; solving it adds 2 servings (1 with hints) to the next dish. Leans
+  on `market`, `bakery` and `library`.
+
+All three only appear once the mill stands, and each answer feeds the same memory.
+
 ## Writing a template
 
 A template is `{ id, topics, difficulty, make(rng) }`; `make` returns a `Spec` (see the

@@ -42,6 +42,8 @@ interface BookOpts {
   focus?: string;
   /** Kitchen runes (village runes) that are open, shown along the bottom. */
   runes?: { title: string; topic: string; reward: string; solved: boolean; open: () => void }[];
+  /** Today's kitchen card (card.ts), at a station: shown first along the bottom. */
+  card?: { title: string; sub: string; done: boolean; open: () => void };
 }
 
 export function recipeBook(o: BookOpts): HTMLElement {
@@ -56,9 +58,16 @@ export function recipeBook(o: BookOpts): HTMLElement {
     <div class="cook-tabs" role="tablist"></div>
     <div class="cook-body"><div class="cook-cards"></div><aside class="cook-info"></aside></div>
   </div>`);
-  if (o.runes?.length) {
-    const strip = el(`<div class="cook-runes"><span class="lbl">${icon("rune")} Kitchen runes</span></div>`);
-    for (const r of o.runes) {
+  if (o.runes?.length || o.card) {
+    const strip = el(`<div class="cook-runes"></div>`);
+    if (o.card) {
+      const c = o.card;
+      const b = el<HTMLButtonElement>(`<button class="rune-chip kitchen-card${c.done ? " solved" : ""}"${c.done ? " disabled" : ""}>${icon(c.done ? "check" : "spark")}<span><b>${esc(c.title)}</b><small>${esc(c.sub)}</small></span></button>`);
+      b.addEventListener("click", c.open);
+      strip.append(b);
+    }
+    if (o.runes?.length) strip.append(el(`<span class="lbl">${icon("rune")} Kitchen runes</span>`));
+    for (const r of o.runes ?? []) {
       const b = el<HTMLButtonElement>(`<button class="rune-chip${r.solved ? " solved" : ""}" title="${esc(r.reward)}">${icon(r.solved ? "check" : "rune")}<span><b>${esc(r.title)}</b><small>${r.solved ? esc(r.reward) : esc(r.topic)}</small></span></button>`);
       b.addEventListener("click", r.open);
       strip.append(b);

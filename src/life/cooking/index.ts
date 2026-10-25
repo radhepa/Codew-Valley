@@ -17,6 +17,7 @@ import { CookSession } from "./cook.ts";
 import { connectPantry, openAsks, phrase } from "./pantry.ts";
 import { cookSfx } from "./sound.ts";
 import { COOKING_RUNES } from "./runes.ts";
+import { cardExtra, cardToday, openCard, takeExtra, type Host } from "./card.ts";
 import { runeSolved } from "../save.ts";
 import "./cooking.css";
 
@@ -84,11 +85,35 @@ function openBook(focus?: string) {
   ctx.app.openSheet(recipeBook({ close: () => ctx.app.closeSheet(), focus, runes: runeChips() }));
 }
 
+/** Today's kitchen card at this station (card.ts), once the mill stands. */
+function cardChip(where: "hearth" | "oven") {
+  const host: Host = where === "oven" ? "baker" : "innkeeper";
+  const extra = cardExtra();
+  const q = cardToday();
+  if (!q) return extra ? { title: "Kitchen card", sub: `Solved: +${extra} on your next dish`, done: true, open: () => {} } : undefined;
+  return {
+    title: where === "oven" ? "Hazel's kitchen card" : "Bram's kitchen card",
+    sub: "Solve it for extra servings",
+    done: false,
+    open: () => {
+      ctx.app.closeSheet();
+      openCard(ctx.app, host, (n) => {
+        cookSfx.learn();
+        window.setTimeout(() => {
+          ctx.app.toast(`**Kitchen card** solved: your next dish comes out with **${n} extra** ${n > 1 ? "servings" : "serving"}.`);
+          openStation(where);
+        }, 700);
+      });
+    },
+  };
+}
+
 function openStation(where: "hearth" | "oven") {
   const vessels: Vessel[] = where === "oven" ? ["oven"] : ["pot", "pan"];
   const sheet = recipeBook({
     close: () => ctx.app.closeSheet(),
     runes: runeChips(),
+    card: cardChip(where),
     station: {
       name: where === "oven" ? "Hazel's Oven" : "Bram's Hearth",
       eyebrow: where === "oven" ? "The bakery" : "By the Sleepy Serpent",
@@ -183,6 +208,7 @@ async function startCook(c: CookChoice, where: "hearth" | "oven") {
   const isNew = !knows(r.id);
   for (const id of items) bag.take(id);
   busy = true;
+  const extra = takeExtra();
   try {
     const session = new CookSession(ctx, hearth, {
       vessel: r.vessel,
@@ -190,7 +216,7 @@ async function startCook(c: CookChoice, where: "hearth" | "oven") {
       items,
       times: c.times,
       isNew,
-      bonus: r.vessel === "pot" && bigPot() ? c.times : 0,
+      bonus: (r.vessel === "pot" && bigPot() ? c.times : 0) + extra,
     });
     let res;
     try {
@@ -203,6 +229,7 @@ async function startCook(c: CookChoice, where: "hearth" | "oven") {
     bag.add(r.id, res.servings);
     cooked(r.id, res.servings);
     ctx.app.gained(r.id, res.servings);
+    if (extra) window.setTimeout(() => ctx.app.toast(`The kitchen card's luck: **${extra} extra** in that batch.`), 2400);
     if (isNew) {
       learn(r.id, "tried");
       cookSfx.learn();

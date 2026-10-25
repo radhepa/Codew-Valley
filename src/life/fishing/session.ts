@@ -12,6 +12,7 @@ import { newReel, stepReel, type Reel } from "./reel.ts";
 import { fishShadow, Line, WATER_Y, WaterFx } from "./fx.ts";
 import { fishSfx } from "./sound.ts";
 import { FORECAST_RUNE } from "./runes.ts";
+import { hasLuck, luckyCatch, openRipple, rippleToday, spendLuck } from "./ripple.ts";
 
 // One fishing trip: walk out (on the pier), cast, wait, a bite, the reel, the catch. A small
 // state machine run from the world's frame hook, with the player held in place (world.hold).
@@ -71,6 +72,12 @@ export class FishingTrip {
   private thrashT = 0;
   private catchModels: Promise<THREE.Object3D | null> | null = null;
   private missed = 0;
+  /** Today's rune ripple is out on the water (unread), and when it next rings. */
+  private rippleOn = false;
+  private rippleT = 0;
+  private rippleEl: HTMLButtonElement;
+  /** This bite is the ripple's lucky catch. */
+  private lucky = false;
   /** Called with each catch (the index updates the journal button). */
   onCatch: (c: Catch) => void = () => {};
 
@@ -82,7 +89,9 @@ export class FishingTrip {
     void this.fx.ready.then(() => this.float.add(this.fx.makeFloat()));
     this.float.visible = false;
     w.scene.add(this.float, this.shadow);
-    this.hud = el(`<div class="plate fish-hud" hidden><div class="fish-status"></div><div class="fish-keys"></div><div class="fish-forecast"></div></div>`);
+    this.hud = el(`<div class="plate fish-hud" hidden><div class="fish-status"></div><div class="fish-keys"></div><div class="fish-forecast"></div><button class="btn small rune fish-ripple" hidden>Read the rune ripple <kbd>Q</kbd></button></div>`);
+    this.rippleEl = this.hud.querySelector(".fish-ripple")!;
+    this.rippleEl.addEventListener("click", () => this.readRipple());
     this.bang = el(`<div class="fish-bang" hidden>!</div>`);
     this.reelEl = el(`<div class="plate fish-reel" hidden>
       <div class="fish-reel-top"><span class="fish-reel-title">Reel it in</span><span class="fish-reel-mode"></span></div>
@@ -188,8 +197,37 @@ export class FishingTrip {
     this.setRodVisible(true);
     this.state = "ready";
     this.t = 0;
-    this.status("Ready to cast.", "<kbd>E</kbd> or click to cast · <kbd>Esc</kbd> to put the rod away");
+    this.status(hasLuck() ? "The pond owes you one. Cast!" : "Ready to cast.", "<kbd>E</kbd> or click to cast · <kbd>Esc</kbd> to put the rod away");
     this.forecast();
+    this.rippleOn = !hasLuck() && !!rippleToday();
+    this.rippleT = 0.6;
+  }
+
+  // ---- the rune ripple (ripple.ts): once a day, a Python question for a lucky catch ----------
+
+  private readRipple() {
+    if (!this.rippleOn || this.ctx.world.paused) return;
+    openRipple(this.ctx.app, () => {
+      this.rippleOn = false;
+      const w = this.ctx.world;
+      const at = this.spot ? this.spot.water.clone().setY(WATER_Y + 0.1) : w.playerPos;
+      w.fx.sparkles(at, 14, 0.7);
+      fishSfx.fanfare(1, false);
+      this.status("<b>The ripple goes still.</b> The pond owes you one: your next fish is a rare one.", "<kbd>E</kbd> or click to cast · <kbd>Esc</kbd> to put the rod away");
+    });
+  }
+
+  /** Gold rings on the water beside the float's spot, now and then, while the ripple waits. */
+  private stepRipple(dt: number) {
+    const show = this.rippleOn && (this.state === "ready" || this.state === "wait");
+    this.rippleEl.hidden = !show;
+    if (!show || !this.spot) return;
+    this.rippleT -= dt;
+    if (this.rippleT > 0) return;
+    this.rippleT = 1.5;
+    const at = this.spot.water.clone().add(V(0.9, 0, -0.5)).setY(WATER_Y);
+    this.fx.ripple(at, 0.6, 1.8, 0.5);
+    this.ctx.world.fx.sparkles(at.clone().setY(WATER_Y + 0.06), 3, 0.25);
   }
 
   // ---- input -------------------------------------------------------------------------
@@ -203,6 +241,8 @@ export class FishingTrip {
       if (k === "e" || k === " " || k === "enter") {
         e.preventDefault();
         if (!e.repeat) this.press();
+      } else if (k === "q") {
+        if (this.state === "ready" || this.state === "wait") this.readRipple();
       } else if (k === "escape" || k === "w" || k === "a" || k === "s" || k === "d" || k.startsWith("arrow")) {
         if (this.state === "ready" || this.state === "wait" || this.state === "show" || (k === "escape" && this.state !== "land")) this.stop();
       }
@@ -297,8 +337,12 @@ export class FishingTrip {
   private bite() {
     this.state = "bite";
     this.t = 0;
-    this.catchNow = { id: pickCatch(this.spot!.id, clock.timeOfDay, clock.raining), size: 0 };
-    this.catchNow.size = rollSize(this.catchNow.id);
+    this.lucky = hasLuck();
+    if (this.lucky) this.catchNow = luckyCatch(this.spot!.id, clock.timeOfDay, clock.raining);
+    else {
+      this.catchNow = { id: pickCatch(this.spot!.id, clock.timeOfDay, clock.raining), size: 0 };
+      this.catchNow.size = rollSize(this.catchNow.id);
+    }
     this.fx.splash(this.floatAt, 0.55, 6);
     fishSfx.bite();
     this.ctx.world.playAnim("fish_bite");
@@ -408,6 +452,11 @@ export class FishingTrip {
     if (f.rarity >= 2) this.ctx.world.fx.sparkles(this.ctx.world.playerPos.add(V(0, 1.6, 0)), 18, 0.8);
     if (isNew && !junk) this.ctx.app.befriend("fisher", 12);
     this.showCard(c, isNew, best && !isNew);
+    if (this.lucky) {
+      this.lucky = false;
+      spendLuck();
+      window.setTimeout(() => this.ctx.app.toast("**The rune ripple** paid you back. Marlo would call it luck. Gran wouldn't."), 1800);
+    }
     const total = Object.values(s.caught).reduce((a, b) => a + b.n, 0);
     if (total === 3 && !runeSolved(FORECAST_RUNE.id)) window.setTimeout(() => this.ctx.app.toast("Marlo has a page of his gran's **water diary** for you. Open the fish journal (**J**)."), 3600);
     this.onCatch(c);
@@ -448,6 +497,7 @@ export class FishingTrip {
     }
     this.t += dt;
     rig.nibble += dt;
+    this.stepRipple(dt);
     if (this.walk) this.stepWalk(dt);
     const tip = this.rodTip();
     switch (this.state) {
