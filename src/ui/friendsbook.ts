@@ -12,7 +12,7 @@ import { keepsakeShelf } from "../scenes/index.ts";
 /** A row of hearts, filled up to h. */
 export function heartRow(h: number, cls = ""): string {
   let s = "";
-  for (let i = 0; i < MAX_HEARTS; i++) s += icon("heart", i < h ? "full" : "");
+  for (let i = 0; i < MAX_HEARTS; i++) s += `<i class="px px-heart${i < h ? " full" : ""}"></i>`;
   return `<span class="hearts ${cls}" title="${h} of ${MAX_HEARTS} hearts">${s}</span>`;
 }
 

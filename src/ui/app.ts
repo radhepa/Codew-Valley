@@ -27,7 +27,7 @@ import { wrenOffer } from "../life/review/index.ts";
 import { item } from "../life/items.ts";
 import { markRune, runeSolved } from "../life/save.ts";
 
-const ICON: Record<Resource, string> = { wood: icon("wood"), stone: icon("stone") };
+const ICON: Record<Resource, string> = { wood: `<i class="px px-wood"></i>`, stone: `<i class="px px-stone"></i>` };
 const ROMAN = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X", "XI", "XII"];
 
 /** Everything drawn over the 3D world: HUD, dialogue, menus. */
@@ -97,10 +97,10 @@ export class App {
       res.append(r);
     }
     const buttons = el(`<div class="hud-buttons">
-      <button class="plate icon-btn bag-btn" title="Bag (B)" aria-label="Open your bag">${icon("bag")}</button>
-      <button class="plate icon-btn friends-btn" title="Friends (F)" aria-label="Open your friends journal">${icon("people")}</button>
-      <button class="plate icon-btn codex-btn" title="The Codex (C)" aria-label="Open the Codex">${icon("book")}</button>
-      <button class="plate icon-btn mute-btn" title="Sound on/off (M)" aria-label="Toggle sound">${icon("sound")}</button>
+      <button class="icon-btn bag-btn" title="Bag (B)" aria-label="Open your bag"><i class="px x3 px-bag"></i></button>
+      <button class="icon-btn friends-btn" title="Friends (F)" aria-label="Open your friends journal"><i class="px x3 px-friends"></i></button>
+      <button class="icon-btn codex-btn" title="The Codex (C)" aria-label="Open the Codex"><i class="px x3 px-book"></i></button>
+      <button class="icon-btn mute-btn" title="Sound on/off (M)" aria-label="Toggle sound"><i class="px px-sound"></i></button>
     </div>`);
     buttons.querySelector(".codex-btn")!.addEventListener("click", () => this.openCodex());
     buttons.querySelector(".friends-btn")!.addEventListener("click", () => this.openFriends());
@@ -187,7 +187,7 @@ export class App {
   private heartToast(g: Gain | null) {
     if (!g || g.after <= g.before) return;
     this.ui.querySelector(".toast")?.remove();
-    const t = el(`<div class="plate toast heart-toast" role="status">${icon("heart", "full")}<span><b>${esc(g.person.name)}</b> · ${g.after} ${g.after === 1 ? "heart" : "hearts"}</span></div>`);
+    const t = el(`<div class="plate toast heart-toast" role="status"><i class="px x3 px-heart full"></i><span><b>${esc(g.person.name)}</b> · ${g.after} ${g.after === 1 ? "heart" : "hearts"}</span></div>`);
     this.ui.append(t);
     clearTimeout(this.toastTimer);
     this.toastTimer = window.setTimeout(() => t.remove(), 3600);
@@ -209,14 +209,15 @@ export class App {
     this.world.paused = true;
     return new Promise((resolve) => {
       let i = 0;
-      const box = el(`<div class="plate dialog" role="dialog" aria-live="polite">
-        <img class="portrait" alt="">
-        <div style="flex:1;min-width:0"><div class="who"></div><div class="text"></div><div class="next"></div></div>
+      const box = el(`<div class="dialog" role="dialog" aria-live="polite">
+        <div class="plate talk"><div class="head"></div><div class="text"></div><div class="next"></div></div>
+        <div class="plate speaker"><img class="portrait" alt=""><div class="who"></div></div>
       </div>`);
       this.dialogEl = box;
       this.ui.append(box);
       const img = box.querySelector<HTMLImageElement>("img")!;
       const who = box.querySelector<HTMLElement>(".who")!;
+      const head = box.querySelector<HTMLElement>(".head")!;
       const text = box.querySelector<HTMLElement>(".text")!;
       const next = box.querySelector<HTMLElement>(".next")!;
       let typing = 0;
@@ -229,8 +230,10 @@ export class App {
       const step = () => {
         const line = lines[i];
         void portrait(modelOf(line.who)).then((u) => (img.src = u));
+        img.alt = nameTag(line.who);
         const person = personById.get(modelOf(line.who));
-        who.innerHTML = `${esc(nameTag(line.who))}${person && bond(person.id).met ? heartRow(hearts(person.id), "mini") : ""}`;
+        who.textContent = nameTag(line.who);
+        head.innerHTML = `<span>${person ? esc(person.title) : ""}</span>${person && bond(person.id).met ? heartRow(hearts(person.id)) : ""}`;
         full = line.text;
         // type the plain text, then swap in the formatted version
         const plain = full.replace(/\*\*|`/g, "");
@@ -256,7 +259,7 @@ export class App {
             next.append(b);
           }
         } else {
-          const b = el<HTMLButtonElement>(`<button class="btn">${last ? "Okay" : `Next ${icon("arrow")}`}</button>`);
+          const b = el<HTMLButtonElement>(last ? `<button class="btn">Okay</button>` : `<button class="btn quiet next-arrow" aria-label="Next"><i class="px px-next"></i></button>`);
           b.addEventListener("click", advance);
           next.append(b);
         }
@@ -519,7 +522,7 @@ export class App {
       },
       openRune: (rune, onSolved) => this.openLifeRune(rune, onSolved),
       hudButton: (o) => {
-        const b = el<HTMLButtonElement>(`<button class="plate icon-btn" title="${esc(o.title)}${o.key ? ` (${o.key.toUpperCase()})` : ""}" aria-label="${esc(o.title)}">${o.icon}</button>`);
+        const b = el<HTMLButtonElement>(`<button class="icon-btn" title="${esc(o.title)}${o.key ? ` (${o.key.toUpperCase()})` : ""}" aria-label="${esc(o.title)}">${o.icon}</button>`);
         b.addEventListener("click", o.onClick);
         this.hudButtons.insertBefore(b, this.hudButtons.querySelector(".codex-btn"));
         if (o.key) this.hotkeys.set(o.key.toLowerCase(), o.onClick);
@@ -642,12 +645,8 @@ export class App {
   titleScreen(onStart: () => void) {
     const hasSave = store.hasSave;
     const [first, second] = GAME_TITLE.split(" & ");
-    // A painted game logo (SVG lettering with an outline and a wooden drop), a ribbon,
-    // wooden signboard buttons and petals drifting over the valley.
-    const logoText = (cls: string) => `<text class="${cls}" x="450" y="150" text-anchor="middle">${esc(first)} <tspan class="amp">&amp;</tspan></text>
-        <text class="${cls}" x="450" y="300" text-anchor="middle">${esc(second ?? "")}</text>`;
-    const twinkle = (x: number, y: number, s: number, d: number) =>
-      `<path class="twinkle" style="animation-delay:${d}s" transform="translate(${x} ${y}) scale(${s})" d="M0-10C1-3 3-1 10 0C3 1 1 3 0 10C-1 3-3 1-10 0C-3-1-1-3 0-10Z"/>`;
+    // Chunky pixel lettering, square wooden plaques and pixel petals over the 3D valley,
+    // with Pip (rendered from the 3D model) peeking in from the corner.
     const petals = Array.from({ length: 16 }, (_, i) => {
       const r = (n: number) => ((Math.sin(i * 12.9898 + n * 78.233) * 43758.5453) % 1 + 1) % 1;
       return `<i style="--x:${(r(1) * 100).toFixed(1)}vw;--d:${(9 + r(2) * 9).toFixed(1)}s;--w:${(-r(3) * 18).toFixed(1)}s;--s:${(0.6 + r(4) * 0.7).toFixed(2)};--sway:${(20 + r(5) * 60).toFixed(0)}px"></i>`;
@@ -655,33 +654,23 @@ export class App {
     const screen = el(`<div class="title-screen">
       <div class="petals" aria-hidden="true">${petals}</div>
       <div class="title-center">
-        <h1 class="logo" aria-label="${esc(GAME_TITLE)}">
-          <svg viewBox="0 0 900 340" aria-hidden="true">
-            <defs>
-              <linearGradient id="logo-fill" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0" stop-color="#fff6dc"/><stop offset=".45" stop-color="#f7d68c"/><stop offset="1" stop-color="#d9973c"/>
-              </linearGradient>
-              <linearGradient id="amp-fill" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0" stop-color="#b8f0da"/><stop offset="1" stop-color="#3c977a"/>
-              </linearGradient>
-            </defs>
-            <g class="logo-drop">${logoText("drop")}</g>
-            <g class="logo-face">${logoText("face")}</g>
-            ${twinkle(118, 70, 1.4, 0)}${twinkle(800, 112, 1, 1.1)}${twinkle(760, 232, 1.6, 2.2)}${twinkle(160, 262, 0.9, 0.6)}
-          </svg>
-        </h1>
-        <div class="ribbon"><span>A cozy valley built in Python</span></div>
-        <nav class="title-menu"></nav>
+        <h1 class="logo" aria-label="${esc(GAME_TITLE)}"><span class="l1" aria-hidden="true">${esc(first)}</span><span class="l2" aria-hidden="true">&amp; ${esc(second ?? "")}</span></h1>
+        <nav class="title-menu" aria-label="Main menu"></nav>
       </div>
+      <div class="title-pip"><img alt=""><span class="plate">Psst. The stone is waiting!</span></div>
       <div class="title-foot">
         <span class="plate status status-dot"></span>
         <span class="plate controls"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> walk <kbd>E</kbd> gather &amp; talk <kbd>C</kbd> Codex</span>
       </div>
     </div>`);
+    void portrait("pip").then((u) => {
+      if (u) screen.querySelector<HTMLImageElement>(".title-pip img")!.src = u;
+      else screen.querySelector(".title-pip")!.remove();
+    });
     const row = screen.querySelector<HTMLElement>(".title-menu")!;
     const status = screen.querySelector<HTMLElement>(".status")!;
-    const sign = (label: string, ico: string) => el<HTMLButtonElement>(`<button class="sign">${icon(ico)}<span>${label}</span></button>`);
-    const begin = sign(hasSave ? "Continue" : "Begin", "play");
+    const sign = (label: string, px: string, cls = "") => el<HTMLButtonElement>(`<button class="sign ${cls}"><i class="px x3 px-${px}"></i><span>${label}</span></button>`);
+    const begin = sign(hasSave ? "Continue" : "Begin", "play", "gold");
     this.ui.classList.add("titling");
     begin.addEventListener("click", () => {
       sfx.click();
@@ -691,7 +680,7 @@ export class App {
     });
     row.append(begin);
     if (hasSave) {
-      const fresh = sign("New game", "reset");
+      const fresh = sign("New game", "rune");
       fresh.addEventListener("click", () => {
         if (!confirm("Start over? Your village and code will be erased.")) return;
         store.reset();

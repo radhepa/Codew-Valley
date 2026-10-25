@@ -13,7 +13,7 @@ const SLIDERS: [Bus, string][] = [
 
 /** Wire the HUD sound button: click opens the panel, M mutes. */
 export function soundButton(btn: HTMLButtonElement, ui: HTMLElement) {
-  const drawIcon = () => (btn.innerHTML = icon(settings.muted ? "mute" : "sound"));
+  const drawIcon = () => (btn.innerHTML = `<i class="px px-${settings.muted ? "mute" : "sound"}"></i>`);
   drawIcon();
   onSettings(drawIcon);
   btn.title = "Sound (M to mute)";
