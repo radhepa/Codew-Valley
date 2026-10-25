@@ -79,7 +79,7 @@ offset each so they don't sway in step. Every mesh carries baked AO in `COLOR_0`
 ## Story hooks
 
 - Crest: a sword with a serpent coiled round it, on a blue shield: the guild of the
-  Runes & Serpents valley. The door lintel is carved with runes.
+  Codew Valley. The door lintel is carved with runes.
 - Notice board (stage 16): Rook's map pinned in the middle, a green hill with a red
   dotted road up to a dark storm cloud, the Hush gathering on the north hill.
 - Lookout spyglass points north (+Y), toward that hill.

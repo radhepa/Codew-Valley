@@ -644,7 +644,7 @@ export class App {
 
   titleScreen(onStart: () => void) {
     const hasSave = store.hasSave;
-    const [first, second] = GAME_TITLE.split(" & ");
+    const [first, ...rest] = GAME_TITLE.split(" ");
     // Chunky pixel lettering, square wooden plaques and pixel petals over the 3D valley,
     // with Pip (rendered from the 3D model) peeking in from the corner.
     const petals = Array.from({ length: 16 }, (_, i) => {
@@ -654,7 +654,7 @@ export class App {
     const screen = el(`<div class="title-screen">
       <div class="petals" aria-hidden="true">${petals}</div>
       <div class="title-center">
-        <h1 class="logo" aria-label="${esc(GAME_TITLE)}"><span class="l1" aria-hidden="true">${esc(first)}</span><span class="l2" aria-hidden="true">&amp; ${esc(second ?? "")}</span></h1>
+        <h1 class="logo" aria-label="${esc(GAME_TITLE)}"><span class="l1" aria-hidden="true">${esc(first)}</span><span class="l2" aria-hidden="true">${esc(rest.join(" "))}</span></h1>
         <nav class="title-menu" aria-label="Main menu"></nav>
       </div>
       <div class="title-pip"><img alt=""><span class="plate">Psst. The stone is waiting!</span></div>

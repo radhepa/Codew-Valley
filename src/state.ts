@@ -1,6 +1,6 @@
 import type { Cost } from "./content/types.ts";
 
-export const GAME_TITLE = "Runes & Serpents";
+export const GAME_TITLE = "Codew Valley";
 const SAVE_KEY = "pyvillage.save.v1";
 
 export interface SaveData {

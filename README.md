@@ -1,4 +1,4 @@
-# Runes & Serpents (working title)
+# Codew Valley
 
 A cozy 3D village-builder that teaches Python. You found a village in an empty
 valley, gather wood and stone, and every Python challenge you solve at the rune
