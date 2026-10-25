@@ -5,6 +5,7 @@ import "./farming/items.ts";
 import { FISHING } from "./fishing/index.ts";
 import { COOKING } from "./cooking/index.ts";
 import { REVIEW } from "./review/index.ts";
+import { SCENES_SYSTEM } from "../scenes/index.ts";
 import "./life.css";
 
 // Village life (LIFE.md): fishing, cooking and Wren's daily practice, each a system in its own folder.
@@ -12,7 +13,8 @@ import "./life.css";
 // and register animation clips and hand tools at import time), then calls installLife once
 // the world and the HUD exist.
 
-export const SYSTEMS: LifeSystem[] = [FISHING, COOKING, REVIEW];
+// Heart-event scenes (src/scenes) hook in the same way: they need the world, the HUD and say().
+export const SYSTEMS: LifeSystem[] = [FISHING, COOKING, REVIEW, SCENES_SYSTEM];
 
 export function installLife(ctx: LifeCtx) {
   ctx.world.onFrame(() => clock.tick());

@@ -6,6 +6,7 @@
 //   npm test -- dock market   only these buildings' challenges and Codex pages
 //   npm test -- dock -v       also print why each listed mistake fails
 //   npm test -- life          only the village runes (src/life)
+//   npm test -- scenes        only the personal runes in heart events (src/content/scenes)
 //   npm test -- review        only Wren's practice questions (src/life/review), 20 seeds each
 //   npm test -- review:mk-    only the question templates whose id starts with mk-
 import { loadPyodide } from "pyodide";
@@ -14,6 +15,8 @@ import { CODEX, codexById, PAGES_BY_BUILDING } from "../src/content/codex.ts";
 import { BUILDINGS } from "../src/content/index.ts";
 import { PEOPLE, personById } from "../src/content/people/index.ts";
 import { LIFE_RUNES } from "../src/life/runes.ts";
+import { SCENE_RUNES } from "../src/content/scenes/runes.ts";
+import { SCENES } from "../src/content/scenes/index.ts";
 import { TEMPLATES, makeQuestion } from "../src/life/review/question.ts";
 
 const py = await loadPyodide();
@@ -60,7 +63,7 @@ function check(code, tests, files) {
 
 // Building filter from the command line (anything that isn't a flag).
 const only = process.argv.slice(2).filter((a) => !a.startsWith("-"));
-for (const id of only) if (id !== "life" && !id.startsWith("review") && !BUILDINGS.some((b) => b.id === id)) throw new Error(`No building "${id}". Try one of: ${BUILDINGS.map((b) => b.id).join(", ")}, life`);
+for (const id of only) if (id !== "life" && id !== "scenes" && !id.startsWith("review") && !BUILDINGS.some((b) => b.id === id)) throw new Error(`No building "${id}". Try one of: ${BUILDINGS.map((b) => b.id).join(", ")}, life`);
 const wanted = (id) => !only.length || only.includes(id);
 /** Parts in each building's model (art/specs): one challenge per part. */
 const STAGES = { tavern: 12, mill: 14, dock: 12, market: 14, bakery: 14, forge: 15, library: 14, apothecary: 14, townhall: 14, clocktower: 14, guildhall: 16, observatory: 16 };
@@ -152,6 +155,15 @@ for (const r of LIFE_RUNES) {
   else if (!only.length || only.includes("life")) checkChallenge(`life/${r.id}`, r, at);
 }
 
+// Personal runes in heart events (src/content/scenes): the same checks, `npm test -- scenes`.
+for (const r of SCENE_RUNES) {
+  if (ids.has(r.id) || runeIds.has(r.id)) fail(`scenes/${r.id}`, "duplicate id");
+  runeIds.add(r.id);
+  const at = BUILDINGS.findIndex((b) => b.id === r.requires);
+  if (at < 0) fail(`scenes/${r.id}`, `requires "${r.requires}", which is not a building`);
+  else if (!only.length || only.includes("scenes")) checkChallenge(`scenes/${r.id}`, r, at);
+}
+
 // Wren's daily practice (src/life/review): every question template, built with 20 seeds.
 // The solution passes, the starter, every listed mistake and a typed-in copy of the output
 // fail (without tripping the checker), a seed always builds the same question, the task and
@@ -222,6 +234,19 @@ if (!only.length || reviewArgs.length) {
   }
 }
 
+// Flags the heart events can set (flag -> its values), so sayings can only ask for real ones.
+const sceneFlags = new Map();
+const addFlag = (k, v) => sceneFlags.set(k, (sceneFlags.get(k) ?? new Set()).add(v));
+const walkSteps = (steps) => {
+  for (const st of steps) {
+    if ("choice" in st) for (const o of st.choice.options) addFlag(st.choice.flag, o.value), walkSteps(o.then);
+    if ("flag" in st) addFlag(st.flag, st.value ?? "yes");
+    if ("if" in st) walkSteps([...st.then, ...(st.else ?? [])]);
+    if ("rune" in st) walkSteps([...st.solved, ...st.skipped]);
+  }
+};
+for (const sc of SCENES) walkSteps(sc.steps);
+
 // Villagers: every profile is complete, and every building's villager has one.
 const questionIds = new Set();
 for (const p of PEOPLE) {
@@ -241,6 +266,11 @@ for (const p of PEOPLE) {
     firsts.add(first?.slice(0, 48));
     if ((s.min ?? 0) > (s.max ?? 10)) fail(where, `saying "${first}" has min hearts above max`);
     for (const id of [s.after, s.before]) if (id && !BUILDINGS.some((b) => b.id === id)) fail(where, `saying "${first}" names "${id}", which is not a building`);
+    if (s.flag) {
+      const [k, v] = s.flag.replace(/^!/, "").split("=");
+      if (!sceneFlags.has(k)) fail(where, `saying "${first}" needs flag "${k}", which no heart event sets`);
+      else if (v !== undefined && !sceneFlags.get(k).has(v)) fail(where, `saying "${first}" needs ${k}=${v}, but it is only ever ${[...sceneFlags.get(k)].join(" or ")}`);
+    }
   }
   if (lines.some((l) => !l.trim())) fail(where, "has an empty line");
   if (lines.some((l) => l.startsWith(p.name + ":"))) fail(where, "lines are in their own voice; drop the 'Name:' prefix");

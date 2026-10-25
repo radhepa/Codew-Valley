@@ -136,8 +136,9 @@ function candidates(p: Person, extra: string[], h: number): Candidate[] {
     if (s.when && !now.has(s.when)) continue;
     if (s.after && !isFinished(s.after)) continue;
     if (s.before && isFinished(s.before)) continue;
+    if (s.flag && !store.flagged(s.flag)) continue;
     const lines = typeof s.say === "string" ? [s.say] : s.say;
-    out.push({ key: lines[0].slice(0, 48), lines, fits: !!(s.when || s.after) });
+    out.push({ key: lines[0].slice(0, 48), lines, fits: !!(s.when || s.after || (s.flag && s.flag[0] !== "!")) });
   }
   return out;
 }

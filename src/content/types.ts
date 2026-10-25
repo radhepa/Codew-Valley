@@ -139,6 +139,8 @@ export interface Saying {
   /** Only once this building (id) is finished, or only while it isn't yet. */
   after?: string;
   before?: string;
+  /** Only once a heart-event choice set this flag: "bram.song", "bram.song=sang" for one answer, "!bram.song" until it's set. */
+  flag?: string;
 }
 
 export interface Building {

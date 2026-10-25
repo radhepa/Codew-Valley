@@ -7,6 +7,7 @@ import { esc, el } from "./md.ts";
 import { knownLoves } from "../life/gifts.ts";
 import { item } from "../life/items.ts";
 import { portrait } from "./portrait.ts";
+import { keepsakeShelf } from "../scenes/index.ts";
 
 /** A row of hearts, filled up to h. */
 export function heartRow(h: number, cls = ""): string {
@@ -85,7 +86,8 @@ export function friendsBook(close: () => void): HTMLElement {
       <section><div class="label">Dislikes</div>${h >= 4 ? `<p>${p.dislikes.map(esc).join(" · ")}</p>` : locked(4)}</section>
       <section><div class="label">What they wish for</div>${h >= 6 ? `<p>${esc(p.want)}</p>` : locked(6)}</section>
       ${loves.length ? `<section><div class="label">Gifts they loved</div><p>${loves.map(esc).join(" · ")}</p></section>` : ""}
-      <p class="how">Talk to everyone once a day, answer their questions in a way that suits them, give them a gift now and then, and help build their home. Heart events will open at 2, 4, 6, 8 and 10 hearts in a later update.</p>
+      ${keepsakeShelf(p.id)}
+      <p class="how">Talk to everyone once a day, answer their questions in a way that suits them, give them a gift now and then, and help build their home. At 2, 4, 6, 8 and 10 hearts, visit them at home: something may happen.</p>
     </article>`);
     void portrait(p.id).then((u) => u && (card.querySelector("img")!.src = u));
     page.append(card);

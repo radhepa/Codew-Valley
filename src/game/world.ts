@@ -416,6 +416,8 @@ export class World {
   private frameHooks = new Set<(dt: number, time: number) => void>();
   /** Freezes walking (a minigame is running) while the world keeps animating. */
   hold = false;
+  /** A heart-event scene (src/scenes) is moving these actors and, when set, the camera. */
+  stage: { actors: Set<string>; cam: { pos: THREE.Vector3; look: THREE.Vector3 } | null } | null = null;
   private composer: EffectComposer;
   private tickSky: (t: number, camera: THREE.Camera) => void = () => {};
   private tickMeadow: (wet: number) => void = () => {};
@@ -858,7 +860,7 @@ export class World {
       this.zoom = Math.min(1.45, Math.max(0.6, this.zoom + Math.sign(e.deltaY) * 0.08));
     }, { passive: true });
     canvas.addEventListener("pointerdown", (e) => {
-      if (this.paused || this.cinematic || e.button !== 0) return;
+      if (this.paused || this.cinematic || this.stage || e.button !== 0) return;
       const ndc = new THREE.Vector2((e.clientX / canvas.clientWidth) * 2 - 1, -(e.clientY / canvas.clientHeight) * 2 + 1);
       this.raycaster.setFromCamera(ndc, this.camera);
       const usable = [...this.spots.values()].filter((sp) => sp.obj && sp.label() !== null);
@@ -1000,7 +1002,7 @@ export class World {
       this.pendingHit = null;
     }
     if (!this.cinematic && !this.paused && !this.hold) this.movePlayer(dt);
-    else this.animatePlayer(dt, 0);
+    else if (!this.stage?.actors.has("player")) this.animatePlayer(dt, 0);
     if (!this.paused && this.keys.has("e") && this.nearest && "kind" in this.nearest) this.doInteract(this.nearest);
     this.updateNodes(dt);
     this.weather.update(dt, this.player.position);
@@ -1156,7 +1158,7 @@ export class World {
       const head = this.pip.getObjectByName("pip_head");
       const toPlayer = Math.atan2(this.player.position.x - PIP_POS.x, this.player.position.z - PIP_POS.z);
       const near = this.player.position.distanceTo(PIP_POS) < 7;
-      this.pip.rotation.y = THREE.MathUtils.lerp(this.pip.rotation.y, near ? toPlayer : -0.6, Math.min(1, dt * 3));
+      if (!this.stage?.actors.has("pip")) this.pip.rotation.y = THREE.MathUtils.lerp(this.pip.rotation.y, near ? toPlayer : -0.6, Math.min(1, dt * 3));
       if (head) {
         head.position.y = (head.userData.y ??= head.position.y) + Math.sin(t * 2.2) * 0.03;
         head.rotation.z = Math.sin(t * 1.3) * 0.12;
@@ -1173,6 +1175,7 @@ export class World {
     // villagers (anim.ts): the head turns to the player first and the body follows; they wave
     // hello when the player comes close (the player waves back) and gesture while talking
     for (const [id, v] of this.villagers) {
+      if (this.stage?.actors.has(id)) continue;
       const d = this.player.position.distanceTo(v.position);
       const near = d < 5;
       const to = Math.atan2(this.player.position.x - v.position.x, this.player.position.z - v.position.z);
@@ -1250,6 +1253,14 @@ export class World {
     let pos: THREE.Vector3;
     let look: THREE.Vector3;
     const c = this.cinematic;
+    const shot = this.stage?.cam;
+    if (shot && !c) {
+      this.cam.copy(shot.pos);
+      this.camera.position.copy(shot.pos);
+      ((this.camera.userData.look ??= shot.look.clone()) as THREE.Vector3).copy(shot.look);
+      this.camera.lookAt(shot.look);
+      return;
+    }
     if (c) {
       c.t += dt;
       pos = c.pos;
@@ -1340,6 +1351,21 @@ export class World {
   /** The player's root object (attach a fishing line to it, read its hand, ...). */
   get playerObject(): THREE.Object3D {
     return this.player;
+  }
+
+  /** For scenes (src/scenes): "player", "pip", or a villager by building or model id. */
+  actor(id: string): { obj: THREE.Object3D; anim: Animator | null; key: string } | null {
+    if (id === "player") return { obj: this.player, anim: this.anim, key: "player" };
+    if (id === "pip") return { obj: this.pip, anim: null, key: "pip" };
+    const key = this.villagers.has(id) ? id : BUILDINGS.find((b) => b.villager?.model === id)?.id;
+    const obj = key ? this.villagers.get(key) : undefined;
+    return obj && key ? { obj, anim: this.animators.get(key) ?? null, key } : null;
+  }
+
+  /** Where a building's villager stands and faces when nobody is moving them. */
+  villagerHome(id: string) {
+    const s = SITES[id];
+    return s?.villager ? { pos: s.villager.clone(), rot: s.villagerRot ?? 0 } : null;
   }
 
   /** Turn the player toward a point. */

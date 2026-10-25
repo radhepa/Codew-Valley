@@ -1,7 +1,8 @@
 # Heart events roadmap
 
-The plan for Phase 2's heart events. **Nothing here is written, staged or
-animated yet.** The friendship system that leads to them is already in the
+The plan for Phase 2's heart events. The scene engine is built and **Bram's
+five events are written and staged** (see "Writing a scene" below); everyone
+else's are still a plan. The friendship system that leads to them is already in the
 game:
 - `src/friends.ts` holds the points, hearts, daily chats and questions.
 - `src/content/people/` holds each villager's personality and dialogue.
@@ -218,7 +219,7 @@ In order. Each step is small enough for its own session.
 1. **Villager routines.** Villagers walk between home, the market and the
    tavern by time of day, so events can find them. Needs the animation set
    (idle, walk, talk, wave, react) and the weather session's time of day.
-2. **Scene engine.** Data-driven scene scripts in `src/content/scenes/`:
+2. **Scene engine.** *(Done: `src/scenes/`.)* Data-driven scene scripts in `src/content/scenes/`:
    - actors walk to marks and play animations
    - camera shots
    - emote bubbles (! ? ♥ …)
@@ -226,13 +227,50 @@ In order. Each step is small enough for its own session.
    - fades
    - conditions: hearts, place, time, weather, building finished, flags
    Plus a dev hook to play any scene.
-3. **Personal runes.** A slim workbench mode for small in-scene challenges,
+3. **Personal runes.** *(Done: the `rune` step, `src/content/scenes/runes.ts`.)* A slim workbench mode for small in-scene challenges,
    reusing the challenge format (`task`, `starter`, `tests`, `hints`,
    `solution`, `wrong`) so `npm test` checks them too.
-4. **Keepsakes.** The Founder's Journal gets a keepsake shelf, filled by
+4. **Keepsakes.** *(Done: the shelf on each villager's Friends page.)* The Founder's Journal gets a keepsake shelf, filled by
    events.
 5. **Gifts** (with Phase 4's foraging and cooking): `likes` and `dislikes`
    in each profile become loved, liked and disliked items. One gift a day,
    double on birthdays.
 6. **Write the events** a few villagers at a time, Act I villagers first.
    Each batch is reviewed against `STORY.md`'s writing rules and play-tested.
+
+## Writing a scene
+
+Scenes are plain data in `src/content/scenes/<villager>.ts` (the types are in
+`types.ts` there), listed in `src/content/scenes/index.ts`. `src/scenes/`
+plays them: `engine.ts` (steps), `index.ts` (triggers, keepsake shelf, dev
+hooks), `props.ts` (procedural props), `gestures.ts` (react, nod, laugh,
+wipe, give, read, sigh, toast, point, stir, sway), `emote.ts` and `hum.ts`.
+
+- **When:** `when` holds the hearts, an area `[x, z, radius]` the player walks
+  into, and optionally the time (`morning`, `day`, `evening`, `night`),
+  weather, finished buildings, flags and earlier scenes (`after`). It plays the
+  first time all of them hold on a walk in, never over a sheet, a dialogue or
+  a minigame, and only one per walk in.
+- **Steps** run in order: `fade`, `bars`, `cam` (eased over `t` seconds;
+  `follow` an actor), `place`, `walk` (slow, walk, run; `stop` short of
+  someone), `face`, `sit`, `anim`, `loop`, `emote` (! ? heart ... note sweat),
+  `say` ("Name: text"; a name with no model is a voice off-screen with a
+  lantern portrait), `choice` (sets a flag), `if`, `flag`, `wait`, `music`
+  (hush, back, stage, finish), `hum`, `sound`, `prop` (show, move, carry with
+  `on`), `fx`, `rune`, `keepsake`, `befriend`. A step with `wait: false`
+  lets the next one start at once.
+- **Choices** store `flags["<villager>.<moment>"] = value`. A saying in
+  `src/content/people/` can ask for one with `flag: "bram.song=sang"` (or
+  `"!bram.reply"` for "not yet"); `npm test` checks the flag exists.
+- **Personal runes** use the challenge format with `requires`, like village
+  runes. List them in `SCENE_RUNES` (`npm test -- scenes` checks them). The
+  `rune` step offers the first one whose building is finished; closing it
+  plays the gentler `skipped` steps.
+- **No character models** for anyone without one: stage them off-screen
+  (voices, props, wide shots). The chibi heads are big, so keep the camera
+  2.5 m or more from faces and nobody between the camera and the subject.
+- **Dev:** `__pv.hearts("innkeeper", 6)`, `__pv.scene("bram-letters")`,
+  `__pv.scenes()`, `__pv.flags()` (`flags({})` clears them). Hold Esc (or the
+  Skip chip) to skip: flags and the keepsake still land, and choices take
+  their first option. Screenshot runs add `?noportrait` to the URL so
+  headless Edge never opens a second WebGL context.

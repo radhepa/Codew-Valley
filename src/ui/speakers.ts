@@ -19,7 +19,7 @@ export function toLine(s: string): Line {
 
 export const toLines = (a: string[]) => a.map(toLine);
 
-/** The model (and portrait) for a speaker. */
-export const modelOf = (who: string) => MODELS.get(who) ?? "pip";
+/** The model (and portrait) for a speaker; a named speaker with no model (Bram's old crew, heard off-screen) is a "voice". */
+export const modelOf = (who: string) => MODELS.get(who) ?? (who && who !== "Pip" ? "voice" : "pip");
 
 export const nameTag = (who: string) => who;

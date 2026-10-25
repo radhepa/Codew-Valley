@@ -220,7 +220,7 @@ export const BRAM: Person = {
     // 8–10 hearts: crew, family, and the founder at his table
     { say: "When I got lost I thought the road had made a mistake. Now I reckon it was slow-cooking me. Twenty years on a low heat, and then this valley. And you.", min: 8 },
     { say: "There's a stool by the hearth nobody sits on but you. I never said a word. Folk just leave it empty when you're out. That's how you know you belong somewhere.", min: 8 },
-    { say: "Whatever road the old crew's on, I hope there's a kitchen at the end of it, and someone in it who feeds them right.", min: 8 },
+    { say: "Whatever road the old crew's on, I hope there's a kitchen at the end of it, and someone in it who feeds them right.", min: 8, flag: "!bram.reply" },
     { say: "You write your Python like I cook now. A bit, a taste, a bit more. I've watched you. Proudest I've been of a thing I didn't make myself.", min: 8 },
     { say: "Remember your first week, all thumbs and question marks? Now Wren asks YOU about her ifs and elses. I tell everyone. I'm insufferable about it.", after: "mill", min: 8 },
     { say: "Hazel caught me humming Mum's kneading song this morning. Didn't say a word. Just hummed the next bit, like we'd never stopped.", after: "bakery", min: 8 },
@@ -245,5 +245,20 @@ export const BRAM: Person = {
     { say: "Pip naps on my bar now. Three hundred years on a cold stone, and the first thing that serpent does with freedom is find the warmest spot in the valley. Can't fault it.", after: "observatory" },
     { say: "Pip was waiting for us the whole time. Three hundred years minding a stone for somebody to come and learn. And I used to grumble about waiting for a pot to boil.", after: "observatory", min: 5 },
     { say: "Pip teaches the little ones indentation at my corner table now. Very strict. I'm learning too, from behind the bar. Don't tell Pip I'm behind.", after: "observatory", min: 5 },
+
+    // remembering his heart events (src/content/scenes/bram.ts): each line needs the choice made there
+    { say: "I read the six names to myself again last night. Out loud, the way you had me. Felt less like a list and more like a roll call.", flag: "bram.ledger=names" },
+    { say: "Made the Lantern Road stew today. Proper, with the smoked salt. Didn't borrow a thing from a farm stall. Pim would be ashamed of me.", flag: "bram.ledger=recipe" },
+    { say: "Caught myself humming Gorran's song over the washing-up. Then I heard you humming it outside. Now Pip's at it too. It's catching, like a cold.", flag: "bram.song=sang" },
+    { say: "Bought a new jar of smoked salt from Sable. Cheap stuff. Tastes of nothing. I'm keeping the old jar on the shelf anyway. You know why.", flag: "bram.song=asked" },
+    { say: "Nine letters in a row on my shelf now, first winter to the last. Your rune did that. First tidy thing I've ever owned.", flag: "bram.letters=sorted" },
+    { say: "I keep the letters in order now. Did it myself, slow as treacle. You sat there the whole time and never once said 'hurry up'. I noticed.", flag: "bram.letters=by-hand" },
+    { say: "\"Very well fed.\" I keep picturing Tamsin reading that. She'll laugh so hard she falls off the wagon seat.", flag: "bram.letter=fed", max: 7 },
+    { say: "Every trader up the road, I look at their satchel. Daft. Letters take months. ...I'll keep looking, though.", flag: "bram.letter=home", max: 7 },
+    { say: "I'm practising the stew for when the crew comes. Pip's tasted eleven pots. Pip calls it 'research'. Pip is very well fed now too.", flag: "bram.reply=invite", max: 9 },
+    { say: "You offered to walk me all the way to Thimble Ford. Nobody's ever offered to walk me anywhere. Still a bit stunned, to be honest.", flag: "bram.reply=walk" },
+    { say: "Tamsin writes every month now. Mostly to complain about Gorran's new verses. There are twenty-one. Yours is the longest.", flag: "bram.table" },
+    { say: "\"To the cook who got lost.\" I had it painted over the door. Small. Down by the hinge. You'll find it.", flag: "bram.table=toast" },
+    { say: "You asked Gorran for the song, at my own table. He's telling all of Thimble Ford you're his greatest admirer. I'll never live it down.", flag: "bram.table=song" },
   ],
 };

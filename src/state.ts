@@ -23,6 +23,11 @@ export interface SaveData {
   items: Record<string, number>;
   /** Each village-life system's own save, by system id (src/life/save.ts). */
   life: Record<string, unknown>;
+  /** Heart-event scenes already played (src/scenes), and the choices made in them. */
+  scenes: string[];
+  flags: Record<string, string>;
+  /** Keepsakes from heart events, by id, for the Friends journal's shelf. */
+  keepsakes: string[];
 }
 
 export interface Bond {
@@ -44,7 +49,7 @@ export interface Bond {
   gifts?: string[];
 }
 
-const fresh = (): SaveData => ({ wood: 0, stone: 0, done: [], drafts: {}, hints: {}, quiz: {}, introSeen: false, opened: [], friends: {}, items: {}, life: {} });
+const fresh = (): SaveData => ({ wood: 0, stone: 0, done: [], drafts: {}, hints: {}, quiz: {}, introSeen: false, opened: [], friends: {}, items: {}, life: {}, scenes: [], flags: {}, keepsakes: [] });
 
 function load(): SaveData {
   try {
@@ -100,6 +105,14 @@ class Store {
 
   canAfford(cost: Cost) {
     return this.data.wood >= cost.wood && this.data.stone >= cost.stone;
+  }
+
+  /** "bram.song" holds when the flag is set, "bram.song=sang" when it has that value, "!bram.song" while it isn't set. */
+  flagged(spec: string): boolean {
+    if (spec.startsWith("!")) return !this.flagged(spec.slice(1));
+    const [k, v] = spec.split("=");
+    const got = this.data.flags[k];
+    return v === undefined ? got !== undefined : got === v;
   }
 
   isDone(id: string) {

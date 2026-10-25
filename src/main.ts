@@ -17,6 +17,7 @@ import { music } from "./game/music.ts";
 import { soundscape } from "./game/soundscape.ts";
 import { allItems, bag } from "./life/items.ts";
 import { clock } from "./life/clock.ts";
+import { sceneDev } from "./scenes/index.ts";
 
 // Python starts loading straight away (in its worker) while the world builds.
 const runner = new PythonRunner();
@@ -75,4 +76,9 @@ window.__pv = {
   item: (id: string, n = 1) => bag.add(id, n),
   items: () => allItems().map((d) => d.id),
   day: () => clock.advance(),
+  /** Heart events (src/scenes): scene("bram-ledger") plays one now; hearts("innkeeper", 6); flags() (flags({}) clears); scenes() lists them. */
+  scene: (id: string) => sceneDev.scene(id),
+  hearts: (id: string, n: number) => sceneDev.hearts(id, n),
+  flags: (reset?: object) => sceneDev.flags(reset),
+  scenes: () => sceneDev.scenes(),
 };
