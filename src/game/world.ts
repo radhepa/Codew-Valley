@@ -4,7 +4,8 @@ import { Particles } from "./particles.ts";
 import { Animator, SWING, lineup, type AnyAnim } from "./anim.ts";
 import { Blinker } from "./blink.ts";
 import { sfx } from "./audio.ts";
-import { ATMOS, WEATHER_U, addWeather, createComposer, createHills, createMeadow, createSky } from "./atmosphere.ts";
+import { ATMOS, WEATHER_U, addWeather, createComposer, createHills, createMeadow, createSky, fbm2, meadowRoot } from "./atmosphere.ts";
+import { foliage } from "./foliage.ts";
 import { Weather } from "./weather.ts";
 import { weatherState } from "./weather-state.ts";
 import type { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer.js";
@@ -495,35 +496,64 @@ export class World {
 
   private ground() {
     const size = 320;
-    const seg = 200;
+    const seg = 320;
     const geo = new THREE.PlaneGeometry(size, size, seg, seg);
     geo.rotateX(-Math.PI / 2);
     const pos = geo.getAttribute("position");
-    const colors: number[] = [];
-    const g1 = new THREE.Color("#86A355");
-    const g2 = new THREE.Color("#729249");
-    const g3 = new THREE.Color("#A8B76A");
-    const dirt = new THREE.Color("#BBA47C");
-    const dirtEdge = new THREE.Color("#8F9663");
-    const c = new THREE.Color();
-    for (let i = 0; i < pos.count; i++) {
-      const x = pos.getX(i);
-      const z = pos.getZ(i);
-      pos.setY(i, groundHeight(x, z));
-      const n = noise2(x * 0.9, z * 0.9);
-      c.copy(g1).lerp(n > 0 ? g3 : g2, Math.abs(n) * 0.7);
-      const d = pathDist(x, z);
-      if (d < 1.6) c.lerp(dirtEdge, 0.5);
-      if (d < 1.0) c.copy(dirt).offsetHSL(0, 0, noise2(x * 3, z * 3) * 0.03);
-      colors.push(c.r, c.g, c.b);
-    }
-    geo.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
+    for (let i = 0; i < pos.count; i++) pos.setY(i, groundHeight(pos.getX(i), pos.getZ(i)));
+    geo.setAttribute("color", new THREE.Float32BufferAttribute(new Float32Array(pos.count * 3).fill(0.5), 3));
     geo.computeVertexNormals();
-    this.groundMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1, flatShading: true });
+    // dithered so the dim dusk ground fades smoothly instead of in bands
+    this.groundMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1, dithering: true });
     const ground = new THREE.Mesh(geo, this.groundMat);
     ground.receiveShadow = true;
     ground.name = "ground";
     this.scene.add(ground);
+  }
+
+  /**
+   * Colour the ground once everything is placed: the meadow's own root colours under the grass
+   * (so the field reads as one soft mass), shorter worn lawn where the grass stops, dirt paths
+   * with soft, wobbly worn edges, and darker earth in the shade under the grove trees.
+   */
+  private paintGround(clear: (x: number, z: number, pad?: number) => boolean) {
+    const ground = this.scene.getObjectByName("ground") as THREE.Mesh;
+    const pos = ground.geometry.getAttribute("position");
+    const col = ground.geometry.getAttribute("color");
+    const lawn = new THREE.Color("#8FA75A");
+    const worn = new THREE.Color("#A3A56C");
+    const dirt = new THREE.Color("#C2A97F");
+    const dirtDark = new THREE.Color("#A48B63");
+    const shade = new THREE.Color("#5D6E3A");
+    const c = new THREE.Color();
+    const t = new THREE.Color();
+    const smooth = (a: number, b: number, x: number) => {
+      const k = Math.min(1, Math.max(0, (x - a) / (b - a)));
+      return k * k * (3 - 2 * k);
+    };
+    const trees = this.nodes.filter((n) => n.kind === "wood");
+    for (let i = 0; i < pos.count; i++) {
+      const x = pos.getX(i);
+      const z = pos.getZ(i);
+      const r = Math.hypot(x, z);
+      meadowRoot(x, z, c).multiplyScalar(1.3);
+      if (r < PLAY_RADIUS + 8) {
+        // bare ground where the grass is kept off: a lighter, mown lawn tinted by the same patches,
+        // fading in as the meadow thins toward its edge (the same steps as in createMeadow)
+        const grassy = (clear(x, z, -0.7) ? 0.3 : 0) + (clear(x, z, 0) ? 0.35 : 0) + (clear(x, z, 0.9) ? 0.35 : 0);
+        if (grassy < 1) c.lerp(t.copy(lawn).multiplyScalar(0.92 + fbm2(x * 0.3, z * 0.3) * 0.16), 1 - grassy);
+        for (const n of trees) {
+          const d = Math.hypot(x - n.pos.x, z - n.pos.z);
+          if (d < 3.2) c.lerp(shade, (1 - smooth(1.0, 3.2, d)) * 0.55);
+        }
+        const w = pathDist(x, z) + (fbm2(x * 0.9, z * 0.9) - 0.5) * 0.45;
+        c.lerp(worn, (1 - smooth(0.85, 1.4, w)) * 0.45);
+        const onPath = 1 - smooth(0.75, 1.05, w);
+        if (onPath > 0) c.lerp(t.copy(dirtDark).lerp(dirt, smooth(0.9, 0.2, w)).multiplyScalar(0.95 + fbm2(x * 2.2, z * 2.2) * 0.1), onPath);
+      }
+      col.setXYZ(i, c.r, c.g, c.b);
+    }
+    col.needsUpdate = true;
   }
 
   private water() {
@@ -695,6 +725,7 @@ export class World {
       this.scene.add(obj, stump);
       this.addSway(obj);
       this.addFade(obj);
+      foliage(obj, kind === "tree_pine" ? 0.4 : 0.6, (seed * 0.618) % 1);
       this.nodes.push({ kind: "wood", obj, stump, pos: new THREE.Vector3(x, 0, z), radius: 0.55, hp: NODE_HP, respawnAt: 0, shake: 0, falling: 0 });
       seed++;
     }
@@ -749,6 +780,7 @@ export class World {
       this.scene.add(t);
       this.addSway(t);
       this.addFade(t);
+      foliage(t, kind === "tree_pine" ? 0.4 : 0.6, rnd());
     }
     for (let i = 0; i < 55; i++) {
       const a = rnd() * Math.PI * 2;
@@ -759,6 +791,7 @@ export class World {
       const b = await model("bush", seed++);
       b.position.set(x, 0, z);
       b.rotation.y = rnd() * 6;
+      foliage(b);
       this.scene.add(b);
       this.colliders.push({ x, z, r: 0.5 });
     }
@@ -774,6 +807,7 @@ export class World {
       this.scene.add(f);
     }
     this.tickMeadow = createMeadow(this.scene, { radius: PLAY_RADIUS, height: groundHeight, clear });
+    this.paintGround(clear);
     // fence along the tavern plot's sides, lantern posts on the path
     for (const [x, z, ry] of [
       [-6.2, TAVERN_POS.z - 2, Math.PI / 2], [-6.2, TAVERN_POS.z + 0.1, Math.PI / 2], [6.2, TAVERN_POS.z - 2, Math.PI / 2], [-5.1, TAVERN_POS.z - 4.3, 0], [5.1, TAVERN_POS.z - 4.3, 0], [3, TAVERN_POS.z - 4.3, 0], [-3, TAVERN_POS.z - 4.3, 0],

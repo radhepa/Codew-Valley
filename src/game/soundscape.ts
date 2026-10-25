@@ -120,9 +120,8 @@ class Soundscape {
     const col = this.ground?.geometry.getAttribute("color");
     const pos = this.ground?.geometry.getAttribute("position");
     if (!col || !pos) return "grass";
-    // the ground is a 320 × 320 plane with 200 segments: find the nearest vertex
-    const seg = 200;
-    const size = 320;
+    // the ground is a square plane: find the nearest vertex
+    const { width: size, widthSegments: seg } = (this.ground!.geometry as THREE.PlaneGeometry).parameters;
     const ix = Math.round(((x + size / 2) / size) * seg);
     const iz = Math.round(((z + size / 2) / size) * seg);
     const i = iz * (seg + 1) + ix;

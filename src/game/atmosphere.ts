@@ -160,9 +160,10 @@ export function createHills(scene: THREE.Scene) {
 }
 
 /** Shared wind: bends instanced geometry by its height, with gusts rolling across the field. */
-function windMaterial(base: THREE.MeshLambertMaterial, strength: number) {
+function windMaterial(base: THREE.MeshLambertMaterial, strength: number, grass = false) {
   const windStrength = { value: strength };
   base.onBeforeCompile = (shader) => {
+    if (grass) grassShader(shader);
     shader.uniforms.windTime = WEATHER_U.windTime;
     shader.uniforms.wind = WEATHER_U.wind;
     shader.uniforms.windDir = WEATHER_U.windDir;
@@ -195,9 +196,28 @@ ${NOISE_GLSL}`)
       );
     weatherShader(shader);
   };
-  base.customProgramCacheKey = () => "wind+weather";
+  base.customProgramCacheKey = () => (grass ? "grass+wind+weather" : "wind+weather");
   base.userData.weather = true;
   return base;
+}
+
+/**
+ * Grass blades: lit from straight above on both faces (three.js would flip the up normal on
+ * back faces and leave half the field dark), and a sheen that rolls across the field with the gusts.
+ */
+function grassShader(shader: THREE.WebGLProgramParametersWithUniforms) {
+  shader.vertexShader = shader.vertexShader
+    .replace("#include <common>", `#include <common>
+varying float vSheen;`)
+    .replace("vec2 windOffset = windDir * bend * k;", `vec2 windOffset = windDir * bend * k;
+        vSheen = max(0.0, gust - 0.42) * position.y * (0.5 + wind * 1.6);`);
+  shader.fragmentShader = shader.fragmentShader
+    .replace("#include <common>", `#include <common>
+varying float vSheen;`)
+    .replace("#include <color_fragment>", `#include <color_fragment>
+  diffuseColor.rgb *= (1.0 + vSheen * 0.9) * (gl_FrontFacing ? 1.0 : 0.84);`)
+    .replace("#include <normal_fragment_begin>", `#include <normal_fragment_begin>
+  normal = normalize(vNormal);`);
 }
 
 /** Cloud shadows drifting over the ground and a rainbow in the air: added to every lit material's shader. */
@@ -259,6 +279,50 @@ export function addWeather(m: THREE.Material) {
   m.needsUpdate = true;
 }
 
+// smooth value noise for the meadow's colour patches (the CPU twin of vnoise/fbm above)
+function hash2(x: number, z: number) {
+  const s = Math.sin(x * 127.1 + z * 311.7) * 43758.5453;
+  return s - Math.floor(s);
+}
+function vnoise2(x: number, z: number) {
+  const ix = Math.floor(x), iz = Math.floor(z);
+  const fx = x - ix, fz = z - iz;
+  const ux = fx * fx * (3 - 2 * fx), uz = fz * fz * (3 - 2 * fz);
+  const a = hash2(ix, iz), b = hash2(ix + 1, iz), c = hash2(ix, iz + 1), d = hash2(ix + 1, iz + 1);
+  return a + (b - a) * ux + (c - a) * uz + (a - b - c + d) * ux * uz;
+}
+/** 0..1 noise with three octaves. */
+export function fbm2(x: number, z: number) {
+  return vnoise2(x, z) * 0.57 + vnoise2(x * 2.03 + 17.1, z * 2.03 + 17.1) * 0.29 + vnoise2(x * 4.1 + 3.7, z * 4.1 + 3.7) * 0.14;
+}
+const smooth = (a: number, b: number, x: number) => {
+  const t = Math.min(1, Math.max(0, (x - a) / (b - a)));
+  return t * t * (3 - 2 * t);
+};
+const TIP = { lush: new THREE.Color("#A6C460"), gold: new THREE.Color("#C2C068"), deep: new THREE.Color("#7DA54E"), mint: new THREE.Color("#98C27A") };
+/** How much darker a blade is at the root than at its tip (linear, per channel). */
+export const GRASS_ROOT = new THREE.Color("#4A6A30");
+const ROOT_K = new THREE.Vector3(GRASS_ROOT.r / TIP.lush.r, GRASS_ROOT.g / TIP.lush.g, GRASS_ROOT.b / TIP.lush.b);
+
+/**
+ * The meadow's sunlit tip colour at (x, z): broad lush, golden, deep and minty patches with
+ * smaller mottling, so the field reads painted rather than flat. The ground shares it.
+ */
+export function meadowTip(x: number, z: number, out: THREE.Color) {
+  const a = fbm2(x * 0.045, z * 0.045);
+  const b = fbm2(x * 0.11 + 31, z * 0.11 - 7);
+  out.copy(TIP.lush);
+  out.lerp(TIP.gold, smooth(0.52, 0.74, a) * 0.6);
+  out.lerp(TIP.deep, smooth(0.42, 0.24, a) * 0.85);
+  out.lerp(TIP.mint, smooth(0.6, 0.78, b) * 0.45);
+  return out.multiplyScalar(0.93 + fbm2(x * 0.35, z * 0.35) * 0.14);
+}
+/** The colour at the roots of the meadow at (x, z): what the ground under the grass shows. */
+export function meadowRoot(x: number, z: number, out: THREE.Color) {
+  meadowTip(x, z, out);
+  return out.setRGB(out.r * ROOT_K.x, out.g * ROOT_K.y, out.b * ROOT_K.z);
+}
+
 export interface MeadowOptions {
   radius: number;
   height(x: number, z: number): number;
@@ -274,8 +338,9 @@ export function createMeadow(scene: THREE.Scene, o: MeadowOptions) {
   const blade = new THREE.PlaneGeometry(0.17, 0.8, 1, 4);
   const pos = blade.getAttribute("position");
   const colors: number[] = [];
-  const root = new THREE.Color("#6E8C48");
-  const tip = new THREE.Color("#D2DA93");
+  // a brightness ramp from the dark root to the tip; each blade's colour (meadowTip) tints it
+  const root = new THREE.Color().setRGB(ROOT_K.x, ROOT_K.y, ROOT_K.z);
+  const tip = new THREE.Color(1, 1, 1);
   const c = new THREE.Color();
   for (let i = 0; i < pos.count; i++) {
     const y = pos.getY(i) + 0.4;
@@ -283,7 +348,7 @@ export function createMeadow(scene: THREE.Scene, o: MeadowOptions) {
     pos.setX(i, pos.getX(i) * (1 - t * 0.85));
     pos.setY(i, y);
     pos.setZ(i, t * t * 0.12);
-    c.copy(root).lerp(tip, Math.pow(t, 0.8));
+    c.copy(root).lerp(tip, Math.pow(t, 0.85));
     colors.push(c.r, c.g, c.b);
   }
   blade.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
@@ -291,7 +356,7 @@ export function createMeadow(scene: THREE.Scene, o: MeadowOptions) {
   const normals = blade.getAttribute("normal");
   for (let i = 0; i < normals.count; i++) normals.setXYZ(i, 0, 1, 0);
 
-  const grassMat = windMaterial(new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide }), 0.28);
+  const grassMat = windMaterial(new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide }), 0.28, true);
   // about the same density whatever the valley size (42k blades fit a radius of 30)
   const COUNT = Math.round(42000 * ((o.radius + 6) / 36) ** 2);
   const grass = new THREE.InstancedMesh(blade, grassMat, COUNT);
@@ -299,7 +364,6 @@ export function createMeadow(scene: THREE.Scene, o: MeadowOptions) {
   const q = new THREE.Quaternion();
   const e = new THREE.Euler();
   const tint = new THREE.Color();
-  const tints = ["#FFFFFF", "#F2F5E6", "#E6EFD2", "#FFF4DC"];
   let n = 0;
   for (let tries = 0; n < COUNT && tries < COUNT * 4; tries++) {
     // clumps: denser in noisy patches, sparse elsewhere
@@ -307,14 +371,17 @@ export function createMeadow(scene: THREE.Scene, o: MeadowOptions) {
     const z = (rnd() - 0.5) * 2 * (o.radius + 6);
     const r = Math.hypot(x, z);
     if (r > o.radius + 6 || !o.clear(x, z, -0.7)) continue;
+    // short, thinning grass toward paths, plots and the valley rim instead of a hard edge
+    const edge = (o.clear(x, z, 0) ? 0.55 : 0) + (o.clear(x, z, 0.9) ? 0.45 : 0);
+    const rim = 1 - smooth(o.radius + 2, o.radius + 6, r) * 0.7;
     const density = 0.5 + 0.5 * Math.sin(x * 0.23 + Math.sin(z * 0.19) * 2.2) * Math.cos(z * 0.17 - x * 0.05);
-    if (rnd() > 0.5 + density * 0.5) continue;
+    if (rnd() > (0.5 + density * 0.5) * (0.45 + edge * 0.55)) continue;
     e.set((rnd() - 0.5) * 0.35, rnd() * Math.PI * 2, (rnd() - 0.5) * 0.35);
     q.setFromEuler(e);
-    const s = 0.55 + rnd() * 0.75 * (0.6 + density * 0.6);
-    m.compose(new THREE.Vector3(x, o.height(x, z) - 0.02, z), q, new THREE.Vector3(1, s, 1));
+    const s = (0.55 + rnd() * 0.75 * (0.6 + density * 0.6)) * (0.4 + edge * 0.6) * rim;
+    m.compose(new THREE.Vector3(x, o.height(x, z) - 0.02, z), q, new THREE.Vector3(0.9 + rnd() * 0.3, s, 1));
     grass.setMatrixAt(n, m);
-    grass.setColorAt(n, tint.set(tints[Math.floor(rnd() * tints.length)]));
+    grass.setColorAt(n, meadowTip(x, z, tint).multiplyScalar(0.84 + rnd() * 0.24));
     n++;
   }
   grass.count = n;
