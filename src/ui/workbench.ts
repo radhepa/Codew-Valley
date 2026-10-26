@@ -1,4 +1,4 @@
-import type { Challenge } from "../content/types.ts";
+import { checksFor, type Challenge } from "../content/types.ts";
 import { codexById } from "../content/codex.ts";
 import type { PythonRunner } from "../python/runner.ts";
 import type { RunResult } from "../python/protocol.ts";
@@ -256,6 +256,18 @@ export function workbench(o: BenchOptions): HTMLElement {
     if (extra) box.append(extra);
     feedback.append(el(pipTag()), box);
   }
+  /** First solve: a gold "Solved!" stamp thumps onto the code slate in a burst of pixel sparks. */
+  function celebrate() {
+    root.querySelector(".solved-burst")?.remove();
+    const sparks = Array.from({ length: 18 }, (_, i) => {
+      const a = (i / 18) * Math.PI * 2 + (i % 2) * 0.17;
+      const r = 90 + (i % 3) * 38;
+      return `<b style="--dx:${Math.round(Math.cos(a) * r)}px;--dy:${Math.round(Math.sin(a) * r * 0.7)}px;--c:var(--spark-${i % 3})"></b>`;
+    }).join("");
+    const burst = el(`<div class="solved-burst" aria-hidden="true">${sparks}<span class="solved-stamp"><i class="px px-rune"></i>Solved!</span></div>`);
+    root.querySelector(".editor-wrap")!.append(burst);
+    setTimeout(() => burst.remove(), 2200);
+  }
   function explainResult(res: RunResult, code: string): boolean {
     editor.markError(null);
     if (res.status === "timeout") {
@@ -326,7 +338,7 @@ export function workbench(o: BenchOptions): HTMLElement {
     runBtn.disabled = checkBtn.disabled = true;
     checkBtn.textContent = "Checking…";
     try {
-      const res = await o.runner.run(code, [], { timeoutMs: 6000, tests: c.tests, files: c.files });
+      const res = await o.runner.run(code, [], { timeoutMs: 6000, tests: checksFor(c), files: c.files });
       writeConsole(res, "");
       if (explainResult(res, code)) {
         sfx.fail();
@@ -335,8 +347,12 @@ export function workbench(o: BenchOptions): HTMLElement {
       }
       pr?.onCheck(!!res.grade?.passed);
       if (res.grade?.passed) {
-        sfx.pass();
         const already = o.village ? !!o.solved : store.isDone(c.id);
+        if (already) sfx.pass();
+        else {
+          sfx.solved();
+          celebrate();
+        }
         const act = pr ? pr.action : o.village ? `${icon("rune")} Wake the rune` : `${icon("hammer")} Build the ${esc(c.part.toLowerCase())}`;
         const b = el<HTMLButtonElement>(`<button class="btn gold">${already ? "Close" : act}</button>`);
         b.addEventListener("click", () => (already ? o.close() : o.build()));

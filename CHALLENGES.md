@@ -24,6 +24,7 @@ Each building gets an independent review against this list after it lands.
 - Split checks by mistake so each message fits the mistake that triggered it.
 - Re-run with other values (`again(old, new)` in tavern.ts, `again(*swaps)` / `expect_when` in mill.ts) so typed-in answers and hard-coded numbers fail. Include edge cases (exactly equal, zero, the boundary).
 - Add a `wrong` entry for every new check, and confirm with `node scripts/test-content.mjs -v` that each one fails for the intended reason.
+- Printed output is checked without minding capitals: `out`, `lines`, `rerun` lines, regex on them and text wrapped in `as_output(...)` all compare case-blind, so `hello, valley!` passes for `Hello, valley!`. A challenge whose solution uses `upper`, `title`, `capitalize` or `swapcase` is strict automatically; set `strictCase: true` when the task asks for particular capitals some other way. Variables and returned values are always compared exactly. `npm test` swaps the capitals of the text in each solution's print lines and fails if a lenient challenge then rejects it.
 
 ## Done means
 - `npm test` and `npx tsc --noEmit` green.

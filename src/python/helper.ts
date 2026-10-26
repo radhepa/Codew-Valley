@@ -130,6 +130,91 @@ def _pg_check(cond, msg):
     if not cond:
         raise _PgFail(msg)
 
+def _pg_casefold(x):
+    if isinstance(x, tuple):
+        return tuple(_pg_casefold(i) for i in x)
+    return x.casefold() if isinstance(x, str) else x
+
+class _PgText(str):
+    # Printed text as the checks see it: comparing, searching and counting
+    # ignore capitals, so "hello" passes for "Hello". Challenges about capitals
+    # start their checks with "# case: strict" (content/types.ts checksFor) and
+    # get plain strings. Hashing stays exact, so sets and dict keys match as before.
+    __hash__ = str.__hash__
+    def __eq__(self, o):
+        return str.casefold(self) == o.casefold() if isinstance(o, str) else NotImplemented
+    def __ne__(self, o):
+        r = self.__eq__(o)
+        return r if r is NotImplemented else not r
+    def __contains__(self, o):
+        return _pg_casefold(o) in str.casefold(self)
+    def startswith(self, p, *a):
+        return str.casefold(self).startswith(_pg_casefold(p), *a)
+    def endswith(self, p, *a):
+        return str.casefold(self).endswith(_pg_casefold(p), *a)
+    def find(self, s, *a):
+        return str.casefold(self).find(_pg_casefold(s), *a)
+    def rfind(self, s, *a):
+        return str.casefold(self).rfind(_pg_casefold(s), *a)
+    def index(self, s, *a):
+        return str.casefold(self).index(_pg_casefold(s), *a)
+    def rindex(self, s, *a):
+        return str.casefold(self).rindex(_pg_casefold(s), *a)
+    def count(self, s, *a):
+        return str.casefold(self).count(_pg_casefold(s), *a)
+
+def _pg_text(x):
+    if type(x) is str:
+        return _PgText(x)
+    if isinstance(x, (list, tuple)):
+        return type(x)(_pg_text(i) for i in x)
+    return x
+
+# Pieces cut from printed text stay printed text.
+for _pg_name in ("strip", "lstrip", "rstrip", "split", "rsplit", "splitlines", "partition", "rpartition", "replace", "removeprefix", "removesuffix", "__getitem__", "__add__", "__mod__", "join", "expandtabs", "center", "ljust", "rjust", "zfill"):
+    setattr(_PgText, _pg_name, (lambda m: lambda self, *a, **k: _pg_text(m(self, *a, **k)))(getattr(str, _pg_name)))
+
+_pg_fold = [True]
+
+# While checks run, re's functions ignore capitals when handed printed text, and
+# give text back as printed text, so checks that pick lines apart with regular
+# expressions stay capital-blind too. Anything else (the learner's own strings)
+# goes through untouched.
+import re as _pg_re
+# For each function: where the string sits, and where flags sit, among the arguments after the pattern.
+_PG_RE = {"search": (0, 1), "match": (0, 1), "fullmatch": (0, 1), "findall": (0, 1), "finditer": (0, 1), "split": (0, 2), "sub": (1, 3), "subn": (1, 3)}
+_pg_re_real = {n: getattr(_pg_re, n) for n in _PG_RE}
+
+def _pg_re_blind(name):
+    real = _pg_re_real[name]
+    si, fi = _PG_RE[name]
+    def blind(pattern, *a, **k):
+        a = list(a)
+        s = a[si] if len(a) > si else k.get("string")
+        if not isinstance(s, _PgText):
+            return real(pattern, *a, **k)
+        flags = k.pop("flags", 0)
+        if len(a) > fi:
+            flags = a[fi]
+            del a[fi:]
+        if isinstance(pattern, _pg_re.Pattern):
+            flags |= pattern.flags
+            pattern = pattern.pattern
+        pattern = _pg_re.compile(pattern, flags | _pg_re.IGNORECASE)
+        if len(a) > si:
+            a[si] = str(s)
+        else:
+            k["string"] = str(s)
+        r = real(pattern, *a, **k)
+        if name == "subn":
+            return _pg_text(r[0]), r[1]
+        return _pg_text(r) if name in ("findall", "split", "sub") else r
+    return blind
+
+def _pg_re_on(on):
+    for n in _PG_RE:
+        setattr(_pg_re, n, _pg_re_blind(n) if on else _pg_re_real[n])
+
 def _pg_expect_lines(lines, expected):
     nl = chr(10) + "  "
     for i, want in enumerate(expected):
@@ -155,14 +240,19 @@ def _pg_rerun(source):
         exec(compile(source, "main.py", "exec"), ns2)
     finally:
         sys.stdout = old
-    return ns2, [l.rstrip() for l in buf.getvalue().splitlines()]
+    lines2 = [l.rstrip() for l in buf.getvalue().splitlines()]
+    return ns2, _pg_text(lines2) if _pg_fold[0] else lines2
 
 def _pg_grade(source, tests, files=None):
     # Runs the learner's program, then the challenge's checks. Checks see:
     # ns (the program's variables), out (everything printed), lines (out
     # split into lines, right-stripped), src (the source), check(cond, msg),
-    # expect_lines(list), rerun(variant_source) -> (ns, lines) and files (the
-    # starting files). The program's folder is the current directory.
+    # expect_lines(list), rerun(variant_source) -> (ns, lines), as_output(text
+    # or lines a check captured itself, so they compare like out) and files (the
+    # starting files). The program's folder is the current directory. Unless
+    # the checks start with "# case: strict", out and lines (and rerun's
+    # lines) ignore capitals when compared: see _PgText.
+    _pg_fold[0] = not tests.startswith("# case: strict")
     _pg_set_files(files)
     ns = _pg_new_ns(source)
     tee = _PgTee(sys.stdout)
@@ -176,6 +266,8 @@ def _pg_grade(source, tests, files=None):
             return result
         out = tee.getvalue()
         lines = [l.rstrip() for l in out.splitlines()]
+        if _pg_fold[0]:
+            out, lines = _pg_text(out), _pg_text(lines)
         env = {
             "ns": ns,
             "out": out,
@@ -185,9 +277,11 @@ def _pg_grade(source, tests, files=None):
             "src": source,
             "files": dict(_pg_files),
             "check": _pg_check,
+            "as_output": lambda x: _pg_text(x) if _pg_fold[0] else x,
             "__builtins__": builtins,
         }
         try:
+            _pg_re_on(_pg_fold[0])
             exec(compile(tests, "<checks>", "exec"), env)
             result["passed"] = True
         except _PgFail as f:
@@ -198,5 +292,6 @@ def _pg_grade(source, tests, files=None):
             result["feedback"] = "The rune-checker tripped over your program (" + type(e).__name__ + ": " + str(e) + "). Re-read the task and try again."
         return result
     finally:
+        _pg_re_on(False)
         _pg_restore()
 `;

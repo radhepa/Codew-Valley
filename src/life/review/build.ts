@@ -85,6 +85,8 @@ export interface Spec {
   needs?: [string, string][];
   /** Said when today's run prints the wrong thing. */
   advice?: string;
+  /** Capitals in the output matter (the task asks for them); see content/types.ts checksFor. */
+  strictCase?: boolean;
   /** Wren's lines on the Story tab (defaults are in the pool). */
   intro?: string[];
   /** Codex pages for the Lesson tab (defaults to the topics' first pages). */
@@ -106,6 +108,7 @@ export interface Made {
   codex?: string[];
   /** The checks call extra code after the program (functions, classes, written files). */
   drives: boolean;
+  strictCase?: boolean;
 }
 
 export type BuildingId =
@@ -251,5 +254,6 @@ export function build(s: Spec): Made {
     intro: s.intro,
     codex: s.codex,
     drives: !!s.drive,
+    strictCase: s.strictCase,
   };
 }

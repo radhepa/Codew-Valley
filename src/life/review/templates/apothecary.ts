@@ -614,6 +614,7 @@ export const APOTHECARY: Template[] = [
             ["\\braise\\b", "Turn a bad label away by raising a ValueError."],
           ],
           advice: "Hand back the lowercase crop and the kilos; raise a ValueError for a bad label.",
+          strictCase: true,
           codex: ["raise", "unpacking", "parsing"],
         };
       }

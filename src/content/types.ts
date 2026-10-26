@@ -60,6 +60,13 @@ export interface Challenge {
   files?: Record<string, string>;
   /** Python checks run after the learner's program (see python/helper.ts _pg_grade). */
   tests: string;
+  /**
+   * Printed output is compared without minding capitals unless this is true
+   * ("hello" passes for "Hello"). Left unset, it turns on by itself when the
+   * challenge is about capitals: its reference solution uses upper, title,
+   * capitalize or swapcase. See checksFor.
+   */
+  strictCase?: boolean;
   hints: [string, string, string];
   /** A reference answer; must pass the checks. */
   solution: string;
@@ -167,4 +174,17 @@ export interface Chronicle {
   title: string;
   /** Paragraphs in Ysolde's own voice. Supports **bold** and *italics*. */
   text: string[];
+}
+
+// methods that set the capitals a program prints; lower and casefold usually just
+// match what someone typed ("Rose" == "rose"), so they don't count
+const CASE_METHODS = /\.(upper|title|capitalize|swapcase)\s*\(/;
+
+/**
+ * The checks to send to the grader for a challenge (or a practice question):
+ * its tests, marked "# case: strict" when capitals matter (see Challenge.strictCase).
+ */
+export function checksFor(c: { tests: string; solution: string; strictCase?: boolean }): string {
+  const strict = c.strictCase ?? CASE_METHODS.test(c.solution);
+  return strict ? "# case: strict\n" + c.tests : c.tests;
 }

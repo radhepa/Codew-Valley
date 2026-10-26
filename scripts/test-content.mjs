@@ -13,6 +13,7 @@ import { loadPyodide } from "pyodide";
 import { HELPER } from "../src/python/helper.ts";
 import { CODEX, codexById, PAGES_BY_BUILDING } from "../src/content/codex.ts";
 import { BUILDINGS } from "../src/content/index.ts";
+import { checksFor } from "../src/content/types.ts";
 import { PEOPLE, personById } from "../src/content/people/index.ts";
 import { LIFE_RUNES } from "../src/life/runes.ts";
 import { SCENE_RUNES } from "../src/content/scenes/runes.ts";
@@ -48,6 +49,61 @@ const grade = py.globals.get("_pg_grade");
 // Python drops the tracer when it raises, so put it back before every run.
 const resetLines = () => py.runPython("_pg_lines[0] = 0\nsys.settrace(_pg_tracer)");
 const toPy = (files) => (files ? py.toPy(files) : null);
+// The text a learner types into print(...) lines, with its capitals swapped
+// ("Kinds of seed:" -> "kINDS OF SEED:"); escapes and f-string {fields} are
+// left alone, and so is data printed from variables. Output checks ignore
+// capitals unless a challenge is about them, so the solution must still pass.
+const swapCase = (s) => [...s].map((ch) => (ch === ch.toUpperCase() ? ch.toLowerCase() : ch.toUpperCase())).join("");
+function swapTyped(body, f) {
+  let outText = "", depth = 0;
+  for (let i = 0; i < body.length; i++) {
+    const ch = body[i];
+    if (ch === "\\") {
+      outText += ch + (body[i + 1] ?? "");
+      i++;
+    } else if (f && ch === "{" && body[i + 1] === "{" && !depth) {
+      outText += "{{";
+      i++;
+    } else if (f && ch === "{") {
+      depth++;
+      outText += ch;
+    } else if (f && ch === "}" && depth) {
+      depth--;
+      outText += ch;
+    } else outText += depth ? ch : swapCase(ch);
+  }
+  return outText;
+}
+/** Swaps only strings handed straight to print (not keys or arguments nested deeper, which are data). */
+function swapPrintLine(line) {
+  const at = line.search(/(?<![\w.])print\(/);
+  if (at < 0) return line;
+  let i = at + 6, depth = 1, outText = line.slice(0, i);
+  while (i < line.length && depth > 0) {
+    const m = /^([rRfF]{0,2})(["'])/.exec(line.slice(i));
+    if (m && !/\w/.test(line[i - 1] ?? "")) {
+      const q = m[2];
+      let j = i + m[0].length;
+      while (j < line.length && line[j] !== q) j += line[j] === "\\" ? 2 : 1;
+      const body = line.slice(i + m[0].length, j);
+      const raw = /r/i.test(m[1]);
+      outText += m[0] + (depth === 1 ? (raw ? swapCase(body) : swapTyped(body, /f/i.test(m[1]))) : body) + q;
+      i = j + 1;
+      continue;
+    }
+    const ch = line[i];
+    if ("([{".includes(ch)) depth++;
+    else if (")]}".includes(ch)) depth--;
+    outText += ch;
+    i++;
+  }
+  return outText + line.slice(i);
+}
+/** Print lines already in the starter are given text, not typed, so they stay. */
+const swapPrinted = (code, starter) => {
+  const given = new Set(starter.split("\n").map((l) => l.trim()));
+  return code.split("\n").map((l) => (given.has(l.trim()) ? l : swapPrintLine(l))).join("\n");
+};
 
 function exec(code, files) {
   out = "";
@@ -112,17 +168,24 @@ function checkChallenge(where, c, at) {
   if (others.includes(got)) fail(`${where} quiz`, "two options are the same as the real output");
 
   count++;
-  const sol = check(c.solution, c.tests, c.files);
+  const sol = check(c.solution, checksFor(c), c.files);
   if (!sol.passed) fail(`${where} solution`, `fails: ${sol.status} ${sol.type ?? ""} ${sol.message ?? ""} ${sol.feedback}`);
 
+  const swapped = swapPrinted(c.solution, c.starter);
+  if (sol.passed && swapped !== c.solution && !checksFor(c).startsWith("# case: strict")) {
+    count++;
+    const loud = check(swapped, checksFor(c), c.files);
+    if (!loud.passed) fail(`${where} capitals`, `the solution fails once the text in its print lines has its capitals swapped, so a check still minds capitals: ${loud.feedback || loud.message}`);
+  }
+
   count++;
-  const st = check(c.starter, c.tests, c.files);
+  const st = check(c.starter, checksFor(c), c.files);
   if (st.passed) fail(`${where} starter`, "passes without any work");
   if (st.feedback.startsWith("The rune-checker tripped")) fail(`${where} starter`, `checker crashed: ${st.feedback}`);
 
   c.wrong.forEach((w, i) => {
     count++;
-    const res = check(w, c.tests, c.files);
+    const res = check(w, checksFor(c), c.files);
     if (res.passed) fail(`${where} wrong#${i}`, "passes but should fail");
     else if (res.feedback.startsWith("The rune-checker tripped")) fail(`${where} wrong#${i}`, `checker crashed: ${res.feedback}`);
     else if (process.argv.includes("-v")) console.log(`  ${where} wrong#${i}: ${res.status === "error" ? res.type + ": " + res.message : res.feedback}`);
@@ -212,7 +275,7 @@ if (!only.length || reviewArgs.length) {
       for (const [code, what] of [[m.solution, "solution"], [m.starter, "starter"], ...m.wrong.map((x, i) => [x, `wrong#${i}`])])
         for (const [re, home] of TAUGHT) if (order.indexOf(home) > at && re.test(bare(code))) fail(w, `${what} uses ${re.exec(bare(code))[0].trim()}, taught at the ${home}`);
       count++;
-      const sol = check(m.solution, m.tests, m.files);
+      const sol = check(m.solution, checksFor(m), m.files);
       if (!sol.passed) {
         fail(`${w} solution`, `fails: ${sol.status} ${sol.type ?? ""} ${sol.message ?? ""} ${sol.feedback}`);
         continue;
@@ -225,7 +288,7 @@ if (!only.length || reviewArgs.length) {
       const fakes = m.drives || !printed ? [] : [m.starter + printed.split("\n").map((l) => `print(${JSON.stringify(l)})`).join("\n") + "\n"];
       for (const [code, what] of [[m.starter, "starter"], ...m.wrong.map((x, i) => [x, `wrong#${i}`]), ...fakes.map((x) => [x, "typed-in output"])]) {
         count++;
-        const res = check(code, m.tests, m.files);
+        const res = check(code, checksFor(m), m.files);
         if (res.passed) fail(`${w} ${what}`, "passes but should fail");
         else if (res.feedback.startsWith("The rune-checker tripped")) fail(`${w} ${what}`, `checker crashed: ${res.feedback}`);
         else if (process.argv.includes("-v") && seed === 1) console.log(`  ${w} ${what}: ${res.status === "error" ? res.type + ": " + res.message : res.feedback}`);

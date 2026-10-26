@@ -407,6 +407,19 @@ export const sfx = {
     shimmer(0.25, 1.2, 0.08);
     logSound("sfx", "pass");
   },
+  /** A challenge solved for the first time: a quick run up, a two-note "ta-da" over a low root, bells and sparkle. */
+  solved() {
+    [N.D5, N.E5, N.Fs5, N.A5].forEach((f, i) => pluck(f, i * 0.06, 0.2));
+    pluck(N.D4 / 2, 0.3, 0.2);
+    pluck(N.A5, 0.3, 0.24);
+    pluck(N.D6, 0.3, 0.24);
+    chime(N.Fs5, 0.3, 2.4, 0.035);
+    chime(N.A5, 0.3, 2.4, 0.035);
+    chime(N.D6, 0.32, 2.8, 0.05);
+    shimmer(0.28, 1.5, 0.1);
+    play("glass", { vol: 0.32, delay: 0.32 });
+    logSound("sfx", "solved");
+  },
   /** Check failed: a gentle low "hmm", never harsh. */
   fail() {
     pluck(N.B4 / 2, 0, 0.2);

@@ -90,7 +90,7 @@ def call(name, args=(), kw=None, crash=""):
         check(False, "The rune tried " + shown + " and it crashed with " + type(e).__name__ + ": " + str(e) + "." + (" " + crash if crash else ""))
     finally:
         sys.stdout = old
-    return result, [l.rstrip() for l in buf.getvalue().splitlines()], shown
+    return result, as_output([l.rstrip() for l in buf.getvalue().splitlines()]), shown
 
 def gives(name, args=(), kw=None, crash=""):
     res, printed, shown = call(name, args, kw, crash)

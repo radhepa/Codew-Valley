@@ -104,6 +104,7 @@ export function toRune(q: Question, o: OpenOptions & { onCheck?(passed: boolean)
     tests: m.tests,
     hints: m.hints,
     solution: m.solution,
+    strictCase: m.strictCase,
     wrong: m.wrong,
     done: "",
     requires: q.topics[q.topics.length - 1],

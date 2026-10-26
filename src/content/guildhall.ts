@@ -75,7 +75,7 @@ def _gh_quiet(f, args, kw, what):
         check(False, what + " crashed with " + type(e).__name__ + ": " + str(e) + "." + _gh_advice(e))
     finally:
         sys.stdout = old
-    return val, buf.getvalue()
+    return val, as_output(buf.getvalue())
 
 def need_class(name, parent=None):
     check(name in ns, "The rune can't find a class called " + name + ". Write it as class " + name + ": (the capital letter matters).")
